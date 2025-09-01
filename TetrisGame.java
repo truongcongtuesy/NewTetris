@@ -9,6 +9,10 @@ public class TetrisGame extends JFrame implements KeyListener {
     private static final boolean SHOW_NEXT_PIECE = true;
     private static final boolean SHOW_GHOST_PIECE = true;
     
+    // Sound and music settings
+    private static boolean soundEnabled = true;
+    private static boolean musicEnabled = true;
+    
     // Game dimensions
     private static final int BOARD_WIDTH = 10;
     private static final int BOARD_HEIGHT = 20;
@@ -223,6 +227,9 @@ public class TetrisGame extends JFrame implements KeyListener {
             score += calculateScore(linesRemoved);
             level = Math.min(linesCleared / 10 + 1, 20);
             
+            // Play sound effect for line clear
+            playSound("clear");
+            
             // Increase speed
             fallSpeed = Math.max(50, 500 - (level - 1) * 25);
             gameTimer.setDelay(fallSpeed);
@@ -356,7 +363,8 @@ public class TetrisGame extends JFrame implements KeyListener {
         String[] instructions = {
             "Use UP/DOWN arrows to navigate",
             "Press ENTER to select",
-            "Press ESC to return to menu"
+            "Controls: ,/. (move), L (rotate), Space (drop)",
+            "M (music), Ctrl+S (sound), P (pause)"
         };
         
         for (int i = 0; i < instructions.length; i++) {
@@ -479,13 +487,18 @@ public class TetrisGame extends JFrame implements KeyListener {
         g.setColor(Color.BLACK);
         g.setFont(new Font("Arial", Font.PLAIN, 12));
         g.drawString("Controls:", startX, startY + 150);
-        g.drawString("A/D - Move", startX, startY + 170);
-        g.drawString("S - Soft Drop", startX, startY + 190);
-        g.drawString("W - Rotate", startX, startY + 210);
-        g.drawString("Space - Hard Drop", startX, startY + 230);
-        g.drawString("P - Pause", startX, startY + 250);
-        g.drawString("R - Restart", startX, startY + 270);
-        g.drawString("ESC - Home Menu", startX, startY + 290);
+        g.drawString("Move: ,/. or A/D", startX, startY + 170);
+        g.drawString("Down: Space/↓", startX, startY + 190);
+        g.drawString("Rotate: L or W/↑", startX, startY + 210);
+        g.drawString("Pause: P", startX, startY + 230);
+        g.drawString("Sound: Ctrl+S", startX, startY + 250);
+        g.drawString("Music: M", startX, startY + 270);
+        g.drawString("ESC: Home Menu", startX, startY + 290);
+        
+        // Sound/Music status
+        g.setFont(new Font("Arial", Font.BOLD, 12));
+        g.drawString("Sound: " + (soundEnabled ? "ON" : "OFF"), startX, startY + 320);
+        g.drawString("Music: " + (musicEnabled ? "ON" : "OFF"), startX, startY + 340);
     }
     
     // Key controls
@@ -529,51 +542,74 @@ public class TetrisGame extends JFrame implements KeyListener {
         if (gameOver) return;
         
         switch (e.getKeyCode()) {
+            // Single Player Controls
+            case KeyEvent.VK_COMMA:      // Move left (,)
             case KeyEvent.VK_A:
             case KeyEvent.VK_LEFT:
                 if (canMove(currentX - 1, currentY, currentRotation)) {
                     currentX--;
+                    playSound("move");
                 }
                 break;
+            case KeyEvent.VK_PERIOD:     // Move right (.)
             case KeyEvent.VK_D:
             case KeyEvent.VK_RIGHT:
                 if (canMove(currentX + 1, currentY, currentRotation)) {
                     currentX++;
+                    playSound("move");
                 }
                 break;
-            case KeyEvent.VK_S:
+            case KeyEvent.VK_SPACE:      // Move down (Space)
             case KeyEvent.VK_DOWN:
                 if (canMove(currentX, currentY + 1, currentRotation)) {
                     currentY++;
                     score++;
+                } else {
+                    // Hard drop with Space
+                    if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+                        while (canMove(currentX, currentY + 1, currentRotation)) {
+                            currentY++;
+                            score += 2;
+                        }
+                    }
                 }
+                playSound("drop");
                 break;
+            case KeyEvent.VK_L:          // Rotate (L)
             case KeyEvent.VK_W:
             case KeyEvent.VK_UP:
                 int newRotation = (currentRotation + 1) % 4;
                 if (canMove(currentX, currentY, newRotation)) {
                     currentRotation = newRotation;
+                    playSound("rotate");
                 }
                 break;
-            case KeyEvent.VK_SPACE:
-                // Hard drop
-                while (canMove(currentX, currentY + 1, currentRotation)) {
-                    currentY++;
-                    score += 2;
+            
+            // Additional Controls
+            case KeyEvent.VK_S:          // Toggle Sound
+                if (e.isControlDown()) { // Ctrl+S to avoid conflict with soft drop
+                    soundEnabled = !soundEnabled;
+                    showMessage("Sound: " + (soundEnabled ? "ON" : "OFF"));
                 }
                 break;
-            case KeyEvent.VK_P:
+            case KeyEvent.VK_M:          // Toggle Music
+                musicEnabled = !musicEnabled;
+                showMessage("Music: " + (musicEnabled ? "ON" : "OFF"));
+                break;
+            case KeyEvent.VK_P:          // Pause/Resume
                 paused = !paused;
                 if (paused) {
                     gameTimer.stop();
+                    playSound("pause");
                 } else {
                     gameTimer.start();
+                    playSound("resume");
                 }
                 break;
-            case KeyEvent.VK_R:
+            case KeyEvent.VK_R:          // Restart
                 restartGame();
                 break;
-            case KeyEvent.VK_ESCAPE:
+            case KeyEvent.VK_ESCAPE:     // Return to Home Screen
                 returnToHomeScreen();
                 break;
         }
@@ -617,6 +653,41 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     @Override
     public void keyReleased(KeyEvent e) {}
+    
+    // Sound system (placeholder - can be extended with actual sound files)
+    private void playSound(String soundType) {
+        if (!soundEnabled) return;
+        
+        // Placeholder for sound effects
+        // In a full implementation, you would load and play actual sound files
+        switch (soundType) {
+            case "move":
+                // Play move sound
+                java.awt.Toolkit.getDefaultToolkit().beep();
+                break;
+            case "rotate":
+                // Play rotate sound  
+                break;
+            case "drop":
+                // Play drop sound
+                break;
+            case "clear":
+                // Play line clear sound
+                java.awt.Toolkit.getDefaultToolkit().beep();
+                break;
+            case "pause":
+            case "resume":
+                // Play pause/resume sound
+                break;
+        }
+    }
+    
+    // Show temporary message to user
+    private void showMessage(String message) {
+        // For now, just print to console
+        // In a full implementation, you could show a temporary overlay on screen
+        System.out.println(message);
+    }
     
     // Getters for external access
     public int getScore() { return score; }

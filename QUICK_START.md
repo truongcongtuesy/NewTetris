@@ -29,10 +29,12 @@ java -version
 ### Cách Chơi:
 - **↑↓** - Chọn menu
 - **Enter** - Xác nhận
-- **A/D** - Di chuyển khối
-- **W** - Xoay khối
+- **,/.** - Di chuyển khối trái/phải
+- **L** - Xoay khối
 - **Space** - Thả nhanh
 - **P** - Tạm dừng
+- **M** - Bật/tắt nhạc
+- **Ctrl+S** - Bật/tắt âm thanh
 - **ESC** - Về menu chính
 
 ---

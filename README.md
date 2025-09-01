@@ -162,13 +162,22 @@ java TetrisGame
 - **ESC** - Return to home (from game)
 
 ### 🎮 In-Game Controls:
-- **A/D** or **←→ (Left/Right arrows)** - Move piece horizontally
-- **S** or **↓ (Down arrow)** - Soft drop (move piece down faster)
-- **W** or **↑ (Up arrow)** - Rotate piece clockwise
-- **Space** - Hard drop (instantly drop piece to bottom)
-- **P** - Pause/unpause game
+
+#### Single-Player Mode:
+- **,/.** or **A/D** or **←→** - Move piece horizontally 
+- **Space** or **↓** - Move down (Space = hard drop, ↓ = soft drop)
+- **L** or **W** or **↑** - Rotate piece clockwise
+
+#### Additional Controls:
+- **P** - Pause/Resume the game
+- **M** - Toggle Music on/off
+- **Ctrl+S** - Toggle Sound Effects on/off
 - **R** - Restart game (works during game over)
 - **ESC** - Return to Home Screen
+
+#### Two-Player Mode (Future Extension):
+- **Player 1**: Use ,.SpaceL keys
+- **Player 2**: Use arrow keys for corresponding actions
 
 ### 🎯 Game Features:
 - **Ghost Piece**: Semi-transparent preview showing where piece will land
@@ -176,6 +185,9 @@ java TetrisGame
 - **Score System**: Points awarded for clearing lines (more lines = more points!)
 - **Level Progression**: Game speeds up every 10 lines cleared
 - **Pause Function**: Press P to pause and resume
+- **Sound Effects**: Audio feedback for moves, rotations, and line clears (toggle with Ctrl+S)
+- **Music Control**: Background music toggle (press M)
+- **Flexible Controls**: Multiple key options for each action
 
 ## Configuration
 
