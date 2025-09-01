@@ -30,29 +30,154 @@ A complete Tetris implementation in Java using Swing.
 ## How to Run
 
 ### Prerequisites
-- Java Development Kit (JDK) 8 or higher installed
-- Command line terminal
+- **Java Development Kit (JDK) 8 or higher** installed on your computer
+- Command line terminal (Command Prompt, PowerShell, or Terminal)
 
-### Compilation and Execution
+### Download and Run the Game
 
-1. Open a terminal and navigate to the project directory:
-   ```powershell
-   cd "C:\D\Australia Study\Tetris and Tetris"
+#### Method 1: Download from GitHub (Recommended)
+
+1. **Download the project**:
+   - Go to: https://github.com/truongcongtuesy/NewTetris
+   - Click the green **"Code"** button
+   - Select **"Download ZIP"**
+   - Extract the ZIP file to your desired location
+
+2. **Or clone with Git** (if you have Git installed):
+   ```bash
+   git clone https://github.com/truongcongtuesy/NewTetris.git
+   cd NewTetris
    ```
 
-2. Compile the Java file:
-   ```powershell
+3. **Navigate to the project folder**:
+   ```bash
+   cd path/to/NewTetris
+   # Example on Windows: cd "C:\Downloads\NewTetris-main"
+   # Example on Mac/Linux: cd ~/Downloads/NewTetris-main
+   ```
+
+4. **Compile the Java file**:
+   ```bash
    javac TetrisGame.java
    ```
 
-3. Run the game:
-   ```powershell
+5. **Run the game**:
+   ```bash
    java TetrisGame
    ```
 
-## Configuration
+#### Method 2: Quick Run (if already compiled)
+If the `.class` files are already present, you can skip compilation:
+```bash
+java TetrisGame
+```
 
-You can modify the game behavior by changing the constants at the top of the `TetrisGame.java` file:
+### Troubleshooting
+
+**❌ "javac is not recognized" or "java is not recognized"**
+- Make sure Java JDK is installed
+- Add Java to your system PATH
+- Download Java from: https://www.oracle.com/java/technologies/downloads/
+
+**❌ "Could not find or load main class TetrisGame"**
+- Make sure you're in the correct directory containing `TetrisGame.java`
+- Ensure the file was compiled successfully (check for `TetrisGame.class`)
+
+**❌ Game window doesn't appear**
+- Check if your system supports Java Swing GUI
+- Try running from a different terminal or as administrator
+
+### Quick Start Guide
+1. Download → Extract → Open Terminal in folder
+2. Run: `javac TetrisGame.java`
+3. Run: `java TetrisGame`
+4. Enjoy! 🎮
+
+## Step-by-Step Guide for Beginners
+
+### For Windows Users:
+
+1. **Check if Java is installed**:
+   - Press `Win + R`, type `cmd`, press Enter
+   - Type: `java -version`
+   - If Java is not found, download from: https://www.oracle.com/java/technologies/downloads/
+
+2. **Download the game**:
+   - Visit: https://github.com/truongcongtuesy/NewTetris
+   - Click green "Code" button → "Download ZIP"
+   - Extract to Desktop (you'll get a folder like "NewTetris-main")
+
+3. **Open Command Prompt in the game folder**:
+   - Open the extracted folder
+   - Hold `Shift` + Right-click in empty space
+   - Select "Open PowerShell window here" or "Open command window here"
+
+4. **Run these commands one by one**:
+   ```cmd
+   javac TetrisGame.java
+   java TetrisGame
+   ```
+
+### For Mac Users:
+
+1. **Check Java installation**:
+   - Open Terminal (Applications → Utilities → Terminal)
+   - Type: `java -version`
+
+2. **Download and extract the game** (same as Windows)
+
+3. **Navigate to folder**:
+   ```bash
+   cd ~/Desktop/NewTetris-main
+   ```
+
+4. **Run the game**:
+   ```bash
+   javac TetrisGame.java
+   java TetrisGame
+   ```
+
+### For Linux Users:
+
+1. **Install Java** (if not installed):
+   ```bash
+   sudo apt update
+   sudo apt install default-jdk
+   ```
+
+2. **Download and run**:
+   ```bash
+   wget https://github.com/truongcongtuesy/NewTetris/archive/main.zip
+   unzip main.zip
+   cd NewTetris-main
+   javac TetrisGame.java
+   java TetrisGame
+   ```
+
+## Game Controls
+
+### 🏠 Home Screen:
+- **↑↓ (Up/Down arrows)** - Navigate menu
+- **Enter** - Select option
+- **ESC** - Return to home (from game)
+
+### 🎮 In-Game Controls:
+- **A/D** or **←→ (Left/Right arrows)** - Move piece horizontally
+- **S** or **↓ (Down arrow)** - Soft drop (move piece down faster)
+- **W** or **↑ (Up arrow)** - Rotate piece clockwise
+- **Space** - Hard drop (instantly drop piece to bottom)
+- **P** - Pause/unpause game
+- **R** - Restart game (works during game over)
+- **ESC** - Return to Home Screen
+
+### 🎯 Game Features:
+- **Ghost Piece**: Semi-transparent preview showing where piece will land
+- **Next Piece**: Preview of the next piece coming
+- **Score System**: Points awarded for clearing lines (more lines = more points!)
+- **Level Progression**: Game speeds up every 10 lines cleared
+- **Pause Function**: Press P to pause and resume
+
+## Configuration
 
 - `MULTIPLAYER` - Set to `true` for 2-player mode
 - `AI_ENABLED` - Set to `true` to enable AI player
