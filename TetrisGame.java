@@ -6,8 +6,6 @@ import java.util.*;
 public class TetrisGame extends JFrame implements KeyListener {
     // Game configuration
     private static final boolean MULTIPLAYER = false; // Set to true for 2-player mode
-    private static final boolean AI_ENABLED = false; // Set to true to enable AI
-    private static final boolean EXTERNAL_CONTROL = false; // Set to true for external control
     private static final boolean SHOW_NEXT_PIECE = true;
     private static final boolean SHOW_GHOST_PIECE = true;
     
@@ -82,12 +80,6 @@ public class TetrisGame extends JFrame implements KeyListener {
     private javax.swing.Timer gameTimer;
     private int fallSpeed = 500; // milliseconds
     
-    // AI variables
-    private AIPlayer ai;
-    
-    // Second player (for multiplayer)
-    private TetrisGame player2;
-    
     public TetrisGame() {
         setTitle("Tetris Game");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -107,11 +99,6 @@ public class TetrisGame extends JFrame implements KeyListener {
         
         // Don't start game timer immediately - wait for user to select "Play Game"
         fallSpeed = 500;
-        
-        // Initialize AI if enabled
-        if (AI_ENABLED) {
-            ai = new AIPlayer();
-        }
     }
     
     private void initializeGame() {
@@ -139,11 +126,6 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     private void gameStep() {
         if (showHomeScreen || gameOver || paused) return;
-        
-        // AI makes move if enabled
-        if (AI_ENABLED && ai != null) {
-            ai.makeMove();
-        }
         
         // Move piece down
         if (canMove(currentX, currentY + 1, currentRotation)) {
@@ -635,55 +617,6 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     @Override
     public void keyReleased(KeyEvent e) {}
-    
-    // Simple AI Player
-    private class AIPlayer {
-        public void makeMove() {
-            // Simple AI logic - move pieces to the left side and try to complete lines
-            if (Math.random() < 0.1) { // 10% chance to make a move each frame
-                if (currentX > 0 && canMove(currentX - 1, currentY, currentRotation)) {
-                    currentX--;
-                } else if (Math.random() < 0.3 && canMove(currentX, currentY, (currentRotation + 1) % 4)) {
-                    currentRotation = (currentRotation + 1) % 4;
-                }
-            }
-        }
-    }
-    
-    // External control methods (for potential network play or other interfaces)
-    public void externalMove(String direction) {
-        if (!EXTERNAL_CONTROL || gameOver || paused) return;
-        
-        switch (direction.toLowerCase()) {
-            case "left":
-                if (canMove(currentX - 1, currentY, currentRotation)) {
-                    currentX--;
-                }
-                break;
-            case "right":
-                if (canMove(currentX + 1, currentY, currentRotation)) {
-                    currentX++;
-                }
-                break;
-            case "down":
-                if (canMove(currentX, currentY + 1, currentRotation)) {
-                    currentY++;
-                }
-                break;
-            case "rotate":
-                int newRotation = (currentRotation + 1) % 4;
-                if (canMove(currentX, currentY, newRotation)) {
-                    currentRotation = newRotation;
-                }
-                break;
-            case "drop":
-                while (canMove(currentX, currentY + 1, currentRotation)) {
-                    currentY++;
-                }
-                break;
-        }
-        repaint();
-    }
     
     // Getters for external access
     public int getScore() { return score; }
