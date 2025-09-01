@@ -1,22 +1,28 @@
 # Tetris Game
 
-A complete Tetris implementation in Java using Swing.
+A complete Tetris implementation in Java using Swing with professional splash screen.
 
 ## Features
 
+- **Splash Screen**: Professional startup screen with student/course information
 - Classic Tetris gameplay with all 7 standard pieces (I, O, T, S, Z, J, L)
+- **Home Screen**: Menu system with Play Game, Settings, and Exit options
+- **Config Screen**: Customizable game settings (level, ghost piece, sound, themes)
 - Ghost piece preview showing where the current piece will land
 - Next piece preview
 - Score tracking and level progression
 - Line clearing with proper scoring (40, 100, 300, 1200 points for 1-4 lines)
 - Increasing game speed with higher levels
+- **Enhanced Game Over dialog** with Play Again, Main Menu, and Exit options
 - Pause functionality
-- Game over detection and restart capability
+- Sound effects toggle (Ctrl+S) and music toggle (M)
+- **Improved Escape key handling** with confirmation dialog
 - Configurable features:
   - Multiplayer mode (2 players)
-  - AI player mode
+  - AI player mode  
   - External control interface
   - Show/hide next piece and ghost piece
+  - Multiple color themes (Classic, Dark, Colorful)
 
 ## Controls
 
@@ -26,6 +32,48 @@ A complete Tetris implementation in Java using Swing.
 - **Space** - Hard drop (instantly drop piece to bottom)
 - **P** - Pause/unpause game
 - **R** - Restart game (works during game over)
+- **ESC** - Return to home screen (with confirmation during gameplay)
+- **Ctrl+S** - Toggle sound effects
+- **M** - Toggle background music
+
+## Splash Screen Customization
+
+The game includes a professional splash screen that displays student and course information. To customize it with your details:
+
+1. **Open `TetrisGame.java` in any text editor**
+2. **Find the `drawSplashScreen` method** (around line 347)
+3. **Replace the placeholder text** in the `studentInfo` array:
+   ```java
+   String[] studentInfo = {
+       "Student: [Your Name]",           // Replace with your name
+       "Student ID: [Your ID]",          // Replace with your student ID  
+       "Course Code: [Course Code]",     // Replace with course code
+       "Class: [Your Class]",            // Replace with your class
+       "Assignment: Tetris Game Project"
+   };
+   ```
+
+4. **Example customization**:
+   ```java
+   String[] studentInfo = {
+       "Student: Nguyen Van A",
+       "Student ID: 12345678", 
+       "Course Code: CS101",
+       "Class: IT2024A",
+       "Assignment: Tetris Game Project"
+   };
+   ```
+
+5. **You can also customize**:
+   - University name: Change `"Australia Study Program"`
+   - Game title: Change `"TETRIS GAME"`
+   - Copyright text
+
+**Splash Screen Features**:
+- ✅ Auto-displays for 3 seconds
+- ✅ Skip with any key press
+- ✅ Professional gradient background
+- ✅ Centered, formatted text layout
 
 ## How to Run
 

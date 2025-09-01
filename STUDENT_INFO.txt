@@ -1,0 +1,37 @@
+=============================================
+TETRIS GAME - STUDENT INFORMATION
+=============================================
+
+TO CUSTOMIZE YOUR SPLASH SCREEN:
+Open TetrisGame.java and find the drawSplashScreen method (around line 347).
+Replace the following information with your details:
+
+Current placeholder text:
+- Student: [Your Name] 
+- Student ID: [Your ID]
+- Course Code: [Course Code] 
+- Class: [Your Class]
+- Assignment: Tetris Game Project
+
+EXAMPLE:
+String[] studentInfo = {
+    "Student: Nguyen Van A",
+    "Student ID: 12345678", 
+    "Course Code: CS101",
+    "Class: IT2024A",
+    "Assignment: Tetris Game Project"
+};
+
+You can also customize:
+- University name: "Australia Study Program"
+- Title: "TETRIS GAME"
+- Copyright text
+
+SPLASH SCREEN FEATURES:
+✓ Shows for 3 seconds automatically
+✓ Can be skipped by pressing any key
+✓ Displays student/course information
+✓ Professional gradient background
+✓ Centered text layout
+
+=============================================

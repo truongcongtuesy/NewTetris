@@ -74,7 +74,8 @@ public class TetrisGame extends JFrame implements KeyListener {
     private boolean paused = false;
     
     // Home screen state
-    private boolean showHomeScreen = true;
+    private boolean showSplashScreen = true;
+    private boolean showHomeScreen = false;
     private boolean showConfigScreen = false;
     private int selectedMenuItem = 0; // 0 = Play Game, 1 = Settings, 2 = Exit
     private final String[] menuItems = {"Play Game", "Settings", "Exit"};
@@ -113,6 +114,15 @@ public class TetrisGame extends JFrame implements KeyListener {
         addKeyListener(this);
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
+        
+        // Setup splash screen timer (3 seconds)
+        javax.swing.Timer splashTimer = new javax.swing.Timer(3000, e -> {
+            showSplashScreen = false;
+            showHomeScreen = true;
+            repaint();
+        });
+        splashTimer.setRepeats(false);
+        splashTimer.start();
         
         // Don't start game timer immediately - wait for user to select "Play Game"
         fallSpeed = 500;
@@ -300,7 +310,9 @@ public class TetrisGame extends JFrame implements KeyListener {
         
         offGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        if (showHomeScreen) {
+        if (showSplashScreen) {
+            drawSplashScreen(offGraphics);
+        } else if (showHomeScreen) {
             drawHomeScreen(offGraphics);
         } else if (showConfigScreen) {
             drawConfigScreen(offGraphics);
@@ -330,6 +342,104 @@ public class TetrisGame extends JFrame implements KeyListener {
         // Draw the off-screen image to the main graphics
         g.drawImage(offScreen, 0, 0, this);
         offGraphics.dispose();
+    }
+    
+    private void drawSplashScreen(Graphics2D g) {
+        // Clear background with gradient
+        GradientPaint gradient = new GradientPaint(0, 0, new Color(25, 25, 112), 
+                                                  0, getHeight(), new Color(0, 0, 139));
+        g.setPaint(gradient);
+        g.fillRect(0, 0, getWidth(), getHeight());
+        
+        // Draw main title
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 56));
+        FontMetrics fm = g.getFontMetrics();
+        String title = "TETRIS GAME";
+        int titleX = (getWidth() - fm.stringWidth(title)) / 2;
+        g.drawString(title, titleX, 120);
+        
+        // Draw group information
+        g.setFont(new Font("Arial", Font.BOLD, 24));
+        fm = g.getFontMetrics();
+        String groupInfo = "Group Information";
+        int groupX = (getWidth() - fm.stringWidth(groupInfo)) / 2;
+        g.drawString(groupInfo, groupX, 200);
+        
+        // Draw student information - Group members
+        g.setFont(new Font("Arial", Font.PLAIN, 16));
+        fm = g.getFontMetrics();
+        
+        String[] studentInfo = {
+            "GROUP MEMBERS:",
+            "",
+            "Name: Cong Tue Sy Truong",
+            "Student ID: s53997930",
+            "",
+            "Name: Jay Hasovic", 
+            "Student ID: s5176151",
+            "",
+            "Name: Nicholas Sialepis",
+            "Student ID: s5304788",
+            "",
+            "Course: 2006ICT - Object Oriented Software Development",
+            "Assignment: Tetris Game Project"
+        };
+        
+        int startY = 220;
+        for (int i = 0; i < studentInfo.length; i++) {
+            if (studentInfo[i].equals("GROUP MEMBERS:")) {
+                // Make group header bold and larger
+                g.setFont(new Font("Arial", Font.BOLD, 18));
+                g.setColor(Color.YELLOW);
+            } else if (studentInfo[i].startsWith("Name:")) {
+                // Make names bold and white
+                g.setFont(new Font("Arial", Font.BOLD, 16));
+                g.setColor(Color.WHITE);
+            } else if (studentInfo[i].startsWith("Student ID:")) {
+                // Make student IDs normal and light blue
+                g.setFont(new Font("Arial", Font.PLAIN, 14));
+                g.setColor(Color.CYAN);
+            } else if (studentInfo[i].startsWith("Course:") || studentInfo[i].startsWith("Assignment:")) {
+                // Make course info italic and light gray
+                g.setFont(new Font("Arial", Font.ITALIC, 14));
+                g.setColor(Color.LIGHT_GRAY);
+            } else {
+                // Default formatting for empty lines
+                g.setFont(new Font("Arial", Font.PLAIN, 16));
+                g.setColor(Color.WHITE);
+            }
+            
+            if (!studentInfo[i].isEmpty()) {
+                fm = g.getFontMetrics();
+                int textX = (getWidth() - fm.stringWidth(studentInfo[i])) / 2;
+                g.drawString(studentInfo[i], textX, startY + (i * 22));
+            }
+        }
+        
+        // Draw university/institution name
+        g.setFont(new Font("Arial", Font.BOLD, 20));
+        g.setColor(Color.WHITE);
+        fm = g.getFontMetrics();
+        String university = "Griffith University";
+        int uniX = (getWidth() - fm.stringWidth(university)) / 2;
+        g.drawString(university, uniX, 520);
+        
+        // Draw loading indicator
+        g.setFont(new Font("Arial", Font.ITALIC, 14));
+        g.setColor(Color.LIGHT_GRAY);
+        fm = g.getFontMetrics();
+        String loading = "Loading...";
+        int loadingX = (getWidth() - fm.stringWidth(loading)) / 2;
+        g.drawString(loading, loadingX, 550);
+        
+        // Draw copyright
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        g.setColor(Color.GRAY);
+        fm = g.getFontMetrics();
+        String copyright = "© 2025 - Java Programming Assignment";
+        int copyrightX = (getWidth() - fm.stringWidth(copyright)) / 2;
+        g.drawString(copyright, copyrightX, 580);
     }
     
     private void drawHomeScreen(Graphics2D g) {
@@ -599,6 +709,14 @@ public class TetrisGame extends JFrame implements KeyListener {
     // Key controls
     @Override
     public void keyPressed(KeyEvent e) {
+        // Handle splash screen - any key skips to home screen
+        if (showSplashScreen) {
+            showSplashScreen = false;
+            showHomeScreen = true;
+            repaint();
+            return;
+        }
+        
         // Handle home screen navigation
         if (showHomeScreen) {
             switch (e.getKeyCode()) {
