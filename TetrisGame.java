@@ -74,6 +74,11 @@ public class TetrisGame extends JFrame implements KeyListener {
     private boolean gameOver = false;
     private boolean paused = false;
     
+    // Home screen state
+    private boolean showHomeScreen = true;
+    private int selectedMenuItem = 0; // 0 = Play Game, 1 = Exit
+    private final String[] menuItems = {"Play Game", "Exit"};
+    
     // Timer for game loop
     private javax.swing.Timer gameTimer;
     private int fallSpeed = 500; // milliseconds
@@ -100,9 +105,8 @@ public class TetrisGame extends JFrame implements KeyListener {
         addKeyListener(this);
         setFocusable(true);
         
-        // Start game timer
-        gameTimer = new javax.swing.Timer(fallSpeed, e -> gameStep());
-        gameTimer.start();
+        // Don't start game timer immediately - wait for user to select "Play Game"
+        fallSpeed = 500;
         
         // Initialize AI if enabled
         if (AI_ENABLED) {
@@ -134,7 +138,7 @@ public class TetrisGame extends JFrame implements KeyListener {
     }
     
     private void gameStep() {
-        if (gameOver || paused) return;
+        if (showHomeScreen || gameOver || paused) return;
         
         // AI makes move if enabled
         if (AI_ENABLED && ai != null) {
@@ -281,6 +285,11 @@ public class TetrisGame extends JFrame implements KeyListener {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
+        if (showHomeScreen) {
+            drawHomeScreen(g2d);
+            return;
+        }
+        
         // Draw board
         drawBoard(g2d);
         
@@ -301,6 +310,62 @@ public class TetrisGame extends JFrame implements KeyListener {
         
         // Draw UI
         drawUI(g2d);
+    }
+    
+    private void drawHomeScreen(Graphics2D g) {
+        // Clear background
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, getWidth(), getHeight());
+        
+        // Draw title
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 48));
+        FontMetrics fm = g.getFontMetrics();
+        String title = "TETRIS";
+        int titleX = (getWidth() - fm.stringWidth(title)) / 2;
+        g.drawString(title, titleX, 150);
+        
+        // Draw subtitle
+        g.setFont(new Font("Arial", Font.PLAIN, 16));
+        fm = g.getFontMetrics();
+        String subtitle = "Classic Block Puzzle Game";
+        int subtitleX = (getWidth() - fm.stringWidth(subtitle)) / 2;
+        g.drawString(subtitle, subtitleX, 180);
+        
+        // Draw menu items
+        g.setFont(new Font("Arial", Font.BOLD, 24));
+        fm = g.getFontMetrics();
+        
+        for (int i = 0; i < menuItems.length; i++) {
+            // Highlight selected item
+            if (i == selectedMenuItem) {
+                g.setColor(Color.YELLOW);
+                g.drawString("> " + menuItems[i] + " <", 
+                           (getWidth() - fm.stringWidth("> " + menuItems[i] + " <")) / 2, 
+                           280 + i * 60);
+            } else {
+                g.setColor(Color.WHITE);
+                g.drawString(menuItems[i], 
+                           (getWidth() - fm.stringWidth(menuItems[i])) / 2, 
+                           280 + i * 60);
+            }
+        }
+        
+        // Draw instructions
+        g.setFont(new Font("Arial", Font.PLAIN, 14));
+        g.setColor(Color.LIGHT_GRAY);
+        fm = g.getFontMetrics();
+        String[] instructions = {
+            "Use UP/DOWN arrows to navigate",
+            "Press ENTER to select",
+            "Press ESC to return to menu"
+        };
+        
+        for (int i = 0; i < instructions.length; i++) {
+            g.drawString(instructions[i], 
+                       (getWidth() - fm.stringWidth(instructions[i])) / 2, 
+                       450 + i * 20);
+        }
     }
     
     private void drawBoard(Graphics2D g) {
@@ -422,16 +487,47 @@ public class TetrisGame extends JFrame implements KeyListener {
         g.drawString("Space - Hard Drop", startX, startY + 230);
         g.drawString("P - Pause", startX, startY + 250);
         g.drawString("R - Restart", startX, startY + 270);
+        g.drawString("ESC - Home Menu", startX, startY + 290);
     }
     
     // Key controls
     @Override
     public void keyPressed(KeyEvent e) {
-        if (gameOver && e.getKeyCode() == KeyEvent.VK_R) {
-            restartGame();
+        // Handle home screen navigation
+        if (showHomeScreen) {
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_UP:
+                    selectedMenuItem = (selectedMenuItem - 1 + menuItems.length) % menuItems.length;
+                    break;
+                case KeyEvent.VK_DOWN:
+                    selectedMenuItem = (selectedMenuItem + 1) % menuItems.length;
+                    break;
+                case KeyEvent.VK_ENTER:
+                    if (selectedMenuItem == 0) { // Play Game
+                        startGame();
+                    } else if (selectedMenuItem == 1) { // Exit
+                        System.exit(0);
+                    }
+                    break;
+            }
+            repaint();
             return;
         }
         
+        // Handle game over state
+        if (gameOver) {
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_R:
+                    restartGame();
+                    break;
+                case KeyEvent.VK_ESCAPE:
+                    returnToHomeScreen();
+                    break;
+            }
+            return;
+        }
+        
+        // Handle in-game controls
         if (gameOver) return;
         
         switch (e.getKeyCode()) {
@@ -479,6 +575,9 @@ public class TetrisGame extends JFrame implements KeyListener {
             case KeyEvent.VK_R:
                 restartGame();
                 break;
+            case KeyEvent.VK_ESCAPE:
+                returnToHomeScreen();
+                break;
         }
         repaint();
     }
@@ -489,6 +588,29 @@ public class TetrisGame extends JFrame implements KeyListener {
         fallSpeed = 500;
         gameTimer = new javax.swing.Timer(fallSpeed, e -> gameStep());
         gameTimer.start();
+        repaint();
+    }
+    
+    private void startGame() {
+        showHomeScreen = false;
+        initializeGame();
+        fallSpeed = 500;
+        if (gameTimer != null) {
+            gameTimer.stop();
+        }
+        gameTimer = new javax.swing.Timer(fallSpeed, e -> gameStep());
+        gameTimer.start();
+        repaint();
+    }
+    
+    private void returnToHomeScreen() {
+        showHomeScreen = true;
+        gameOver = false;
+        paused = false;
+        if (gameTimer != null) {
+            gameTimer.stop();
+        }
+        selectedMenuItem = 0; // Reset to "Play Game"
         repaint();
     }
     
