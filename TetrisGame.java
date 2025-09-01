@@ -161,7 +161,7 @@ public class TetrisGame extends JFrame implements KeyListener {
             if (!canMove(currentX, currentY, currentRotation)) {
                 gameOver = true;
                 gameTimer.stop();
-                JOptionPane.showMessageDialog(this, "Game Over! Score: " + score);
+                showGameOverDialog();
             }
         }
         
@@ -735,7 +735,22 @@ public class TetrisGame extends JFrame implements KeyListener {
                 restartGame();
                 break;
             case KeyEvent.VK_ESCAPE:     // Return to Home Screen
-                returnToHomeScreen();
+                if (!gameOver && !showHomeScreen) {
+                    // In-game, ask for confirmation before quitting
+                    int result = JOptionPane.showConfirmDialog(
+                            this,
+                            "Quit current game and return to the menu?",
+                            "Confirm Quit",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.QUESTION_MESSAGE
+                    );
+                    if (result == JOptionPane.YES_OPTION) {
+                        returnToHomeScreen();
+                    }
+                } else {
+                    // If game over or already in home screen, just return directly
+                    returnToHomeScreen();
+                }
                 break;
         }
         repaint();
@@ -844,6 +859,39 @@ public class TetrisGame extends JFrame implements KeyListener {
             case "pause":
             case "resume":
                 // Play pause/resume sound
+                break;
+            case "gameOver":
+                // Play game over sound
+                java.awt.Toolkit.getDefaultToolkit().beep();
+                break;
+        }
+    }
+    
+    // Game Over dialog
+    private void showGameOverDialog() {
+        playSound("gameOver");
+        int result = JOptionPane.showOptionDialog(
+            this,
+            "Game Over!\n\nScore: " + score + "\nLevel: " + level + "\nLines: " + linesCleared + 
+            "\n\nWhat would you like to do?",
+            "Game Over",
+            JOptionPane.YES_NO_CANCEL_OPTION,
+            JOptionPane.INFORMATION_MESSAGE,
+            null,
+            new String[]{"Play Again", "Main Menu", "Exit"},
+            "Play Again"
+        );
+        
+        switch (result) {
+            case 0: // Play Again
+                restartGame();
+                break;
+            case 1: // Main Menu
+                returnToHomeScreen();
+                break;
+            case 2: // Exit
+            default:
+                System.exit(0);
                 break;
         }
     }
