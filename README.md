@@ -158,8 +158,22 @@ java TetrisGame
 
 ### 🏠 Home Screen:
 - **↑↓ (Up/Down arrows)** - Navigate menu
-- **Enter** - Select option
-- **ESC** - Return to home (from game)
+- **Enter** - Select option (Play Game, Settings, Exit)
+- **ESC** - Return to home (from game or settings)
+
+### ⚙️ Settings Screen:
+- **↑↓** - Navigate through settings
+- **←→** - Change setting values
+- **Enter** - Select "Back to Menu"
+- **ESC** - Return to home screen
+
+#### Available Settings:
+- **Starting Level** (1-20) - Choose initial difficulty
+- **Ghost Piece** (ON/OFF) - Show piece landing preview
+- **Next Piece** (ON/OFF) - Show next piece preview  
+- **Sound Effects** (ON/OFF) - Game sound effects
+- **Background Music** (ON/OFF) - Background music
+- **Theme** (Classic/Dark/Colorful) - Visual theme
 
 ### 🎮 In-Game Controls:
 
@@ -180,6 +194,9 @@ java TetrisGame
 - **Player 2**: Use arrow keys for corresponding actions
 
 ### 🎯 Game Features:
+- **Home Screen Menu**: Play Game, Settings, Exit options
+- **Comprehensive Settings**: Customize starting level, visual options, audio
+- **Theme System**: Multiple visual themes (Classic, Dark, Colorful)
 - **Ghost Piece**: Semi-transparent preview showing where piece will land
 - **Next Piece**: Preview of the next piece coming
 - **Score System**: Points awarded for clearing lines (more lines = more points!)
@@ -188,6 +205,7 @@ java TetrisGame
 - **Sound Effects**: Audio feedback for moves, rotations, and line clears (toggle with Ctrl+S)
 - **Music Control**: Background music toggle (press M)
 - **Flexible Controls**: Multiple key options for each action
+- **Configurable Difficulty**: Choose starting level 1-20
 
 ## Configuration
 

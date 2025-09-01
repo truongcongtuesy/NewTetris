@@ -6,8 +6,6 @@ import java.util.*;
 public class TetrisGame extends JFrame implements KeyListener {
     // Game configuration
     private static final boolean MULTIPLAYER = false; // Set to true for 2-player mode
-    private static final boolean SHOW_NEXT_PIECE = true;
-    private static final boolean SHOW_GHOST_PIECE = true;
     
     // Sound and music settings
     private static boolean soundEnabled = true;
@@ -77,8 +75,23 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     // Home screen state
     private boolean showHomeScreen = true;
-    private int selectedMenuItem = 0; // 0 = Play Game, 1 = Exit
-    private final String[] menuItems = {"Play Game", "Exit"};
+    private boolean showConfigScreen = false;
+    private int selectedMenuItem = 0; // 0 = Play Game, 1 = Settings, 2 = Exit
+    private final String[] menuItems = {"Play Game", "Settings", "Exit"};
+    
+    // Config screen state
+    private int selectedConfigItem = 0;
+    private final String[] configItems = {
+        "Starting Level", "Ghost Piece", "Next Piece", "Sound Effects", 
+        "Background Music", "Game Theme", "Back to Menu"
+    };
+    
+    // Configuration settings
+    private static int startingLevel = 1;
+    private static boolean showGhostPiece = true;
+    private static boolean showNextPiece = true;
+    private static String gameTheme = "Classic";
+    private static final String[] themes = {"Classic", "Dark", "Colorful"};
     
     // Timer for game loop
     private javax.swing.Timer gameTimer;
@@ -122,14 +135,14 @@ public class TetrisGame extends JFrame implements KeyListener {
         
         // Reset game state
         score = 0;
-        level = 1;
+        level = startingLevel; // Use config setting
         linesCleared = 0;
         gameOver = false;
         paused = false;
     }
     
     private void gameStep() {
-        if (showHomeScreen || gameOver || paused) return;
+        if (showHomeScreen || showConfigScreen || gameOver || paused) return;
         
         // Move piece down
         if (canMove(currentX, currentY + 1, currentRotation)) {
@@ -289,6 +302,8 @@ public class TetrisGame extends JFrame implements KeyListener {
         
         if (showHomeScreen) {
             drawHomeScreen(offGraphics);
+        } else if (showConfigScreen) {
+            drawConfigScreen(offGraphics);
         } else {
             // Draw board
             drawBoard(offGraphics);
@@ -297,14 +312,14 @@ public class TetrisGame extends JFrame implements KeyListener {
             if (!gameOver) {
                 drawCurrentPiece(offGraphics);
                 
-                // Draw ghost piece if enabled
-                if (SHOW_GHOST_PIECE) {
+                // Draw ghost piece if enabled in config
+                if (showGhostPiece) {
                     drawGhostPiece(offGraphics);
                 }
             }
             
-            // Draw next piece if enabled
-            if (SHOW_NEXT_PIECE) {
+            // Draw next piece if enabled in config
+            if (showNextPiece) {
                 drawNextPiece(offGraphics);
             }
             
@@ -371,6 +386,86 @@ public class TetrisGame extends JFrame implements KeyListener {
             g.drawString(instructions[i], 
                        (getWidth() - fm.stringWidth(instructions[i])) / 2, 
                        450 + i * 20);
+        }
+    }
+    
+    private void drawConfigScreen(Graphics2D g) {
+        // Clear background
+        g.setColor(getThemeBackgroundColor());
+        g.fillRect(0, 0, getWidth(), getHeight());
+        
+        // Draw title
+        g.setColor(getThemeTextColor());
+        g.setFont(new Font("Arial", Font.BOLD, 36));
+        FontMetrics fm = g.getFontMetrics();
+        String title = "SETTINGS";
+        int titleX = (getWidth() - fm.stringWidth(title)) / 2;
+        g.drawString(title, titleX, 120);
+        
+        // Draw config items
+        g.setFont(new Font("Arial", Font.BOLD, 20));
+        fm = g.getFontMetrics();
+        
+        for (int i = 0; i < configItems.length; i++) {
+            int yPos = 200 + i * 50;
+            
+            // Highlight selected item
+            if (i == selectedConfigItem) {
+                g.setColor(Color.YELLOW);
+                g.drawString("> " + getConfigItemText(i) + " <", 
+                           (getWidth() - fm.stringWidth("> " + getConfigItemText(i) + " <")) / 2, 
+                           yPos);
+            } else {
+                g.setColor(getThemeTextColor());
+                g.drawString(getConfigItemText(i), 
+                           (getWidth() - fm.stringWidth(getConfigItemText(i))) / 2, 
+                           yPos);
+            }
+        }
+        
+        // Draw instructions
+        g.setFont(new Font("Arial", Font.PLAIN, 14));
+        g.setColor(Color.LIGHT_GRAY);
+        fm = g.getFontMetrics();
+        String[] instructions = {
+            "Use UP/DOWN arrows to navigate",
+            "Use LEFT/RIGHT arrows to change values",
+            "Press ENTER to select, ESC to go back"
+        };
+        
+        for (int i = 0; i < instructions.length; i++) {
+            g.drawString(instructions[i], 
+                       (getWidth() - fm.stringWidth(instructions[i])) / 2, 
+                       500 + i * 20);
+        }
+    }
+    
+    private String getConfigItemText(int index) {
+        switch (index) {
+            case 0: return "Starting Level: " + startingLevel;
+            case 1: return "Ghost Piece: " + (showGhostPiece ? "ON" : "OFF");
+            case 2: return "Next Piece: " + (showNextPiece ? "ON" : "OFF");
+            case 3: return "Sound Effects: " + (soundEnabled ? "ON" : "OFF");
+            case 4: return "Background Music: " + (musicEnabled ? "ON" : "OFF");
+            case 5: return "Theme: " + gameTheme;
+            case 6: return "Back to Menu";
+            default: return "";
+        }
+    }
+    
+    private Color getThemeBackgroundColor() {
+        switch (gameTheme) {
+            case "Dark": return Color.DARK_GRAY;
+            case "Colorful": return new Color(30, 30, 60);
+            default: return Color.BLACK; // Classic
+        }
+    }
+    
+    private Color getThemeTextColor() {
+        switch (gameTheme) {
+            case "Dark": return Color.LIGHT_GRAY;
+            case "Colorful": return Color.CYAN;
+            default: return Color.WHITE; // Classic
         }
     }
     
@@ -516,9 +611,39 @@ public class TetrisGame extends JFrame implements KeyListener {
                 case KeyEvent.VK_ENTER:
                     if (selectedMenuItem == 0) { // Play Game
                         startGame();
-                    } else if (selectedMenuItem == 1) { // Exit
+                    } else if (selectedMenuItem == 1) { // Settings
+                        showConfigScreen();
+                    } else if (selectedMenuItem == 2) { // Exit
                         System.exit(0);
                     }
+                    break;
+            }
+            repaint();
+            return;
+        }
+        
+        // Handle config screen navigation
+        if (showConfigScreen) {
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_UP:
+                    selectedConfigItem = (selectedConfigItem - 1 + configItems.length) % configItems.length;
+                    break;
+                case KeyEvent.VK_DOWN:
+                    selectedConfigItem = (selectedConfigItem + 1) % configItems.length;
+                    break;
+                case KeyEvent.VK_LEFT:
+                    changeConfigValue(-1);
+                    break;
+                case KeyEvent.VK_RIGHT:
+                    changeConfigValue(1);
+                    break;
+                case KeyEvent.VK_ENTER:
+                    if (selectedConfigItem == configItems.length - 1) { // Back to Menu
+                        returnToHomeScreen();
+                    }
+                    break;
+                case KeyEvent.VK_ESCAPE:
+                    returnToHomeScreen();
                     break;
             }
             repaint();
@@ -639,6 +764,7 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     private void returnToHomeScreen() {
         showHomeScreen = true;
+        showConfigScreen = false;
         gameOver = false;
         paused = false;
         if (gameTimer != null) {
@@ -646,6 +772,46 @@ public class TetrisGame extends JFrame implements KeyListener {
         }
         selectedMenuItem = 0; // Reset to "Play Game"
         repaint();
+    }
+    
+    private void showConfigScreen() {
+        showHomeScreen = false;
+        showConfigScreen = true;
+        selectedConfigItem = 0;
+        repaint();
+    }
+    
+    private void changeConfigValue(int direction) {
+        switch (selectedConfigItem) {
+            case 0: // Starting Level
+                startingLevel = Math.max(1, Math.min(20, startingLevel + direction));
+                break;
+            case 1: // Ghost Piece
+                showGhostPiece = !showGhostPiece;
+                break;
+            case 2: // Next Piece
+                showNextPiece = !showNextPiece;
+                break;
+            case 3: // Sound Effects
+                soundEnabled = !soundEnabled;
+                showMessage("Sound Effects: " + (soundEnabled ? "ON" : "OFF"));
+                break;
+            case 4: // Background Music
+                musicEnabled = !musicEnabled;
+                showMessage("Background Music: " + (musicEnabled ? "ON" : "OFF"));
+                break;
+            case 5: // Theme
+                int currentThemeIndex = 0;
+                for (int i = 0; i < themes.length; i++) {
+                    if (themes[i].equals(gameTheme)) {
+                        currentThemeIndex = i;
+                        break;
+                    }
+                }
+                currentThemeIndex = (currentThemeIndex + direction + themes.length) % themes.length;
+                gameTheme = themes[currentThemeIndex];
+                break;
+        }
     }
     
     @Override
