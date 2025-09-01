@@ -2,7 +2,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
-import java.util.List;
 
 public class TetrisGame extends JFrame implements KeyListener {
     // Game configuration
@@ -104,6 +103,7 @@ public class TetrisGame extends JFrame implements KeyListener {
         // Add key listener
         addKeyListener(this);
         setFocusable(true);
+        setFocusTraversalKeysEnabled(false);
         
         // Don't start game timer immediately - wait for user to select "Play Game"
         fallSpeed = 500;
@@ -166,6 +166,7 @@ public class TetrisGame extends JFrame implements KeyListener {
             }
         }
         
+        // Only repaint once per game step
         repaint();
     }
     
@@ -278,38 +279,53 @@ public class TetrisGame extends JFrame implements KeyListener {
         return result;
     }
     
+    // Override update to prevent automatic clearing and reduce flicker
+    @Override
+    public void update(Graphics g) {
+        paint(g);
+    }
+    
     @Override
     public void paint(Graphics g) {
-        super.paint(g);
+        // Create off-screen image for double buffering
+        Dimension size = getSize();
+        Image offScreen = createImage(size.width, size.height);
+        Graphics2D offGraphics = (Graphics2D) offScreen.getGraphics();
         
-        Graphics2D g2d = (Graphics2D) g;
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        // Clear the off-screen buffer
+        offGraphics.setColor(getBackground());
+        offGraphics.fillRect(0, 0, size.width, size.height);
+        
+        offGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
         if (showHomeScreen) {
-            drawHomeScreen(g2d);
-            return;
-        }
-        
-        // Draw board
-        drawBoard(g2d);
-        
-        // Draw current piece
-        if (!gameOver) {
-            drawCurrentPiece(g2d);
+            drawHomeScreen(offGraphics);
+        } else {
+            // Draw board
+            drawBoard(offGraphics);
             
-            // Draw ghost piece if enabled
-            if (SHOW_GHOST_PIECE) {
-                drawGhostPiece(g2d);
+            // Draw current piece
+            if (!gameOver) {
+                drawCurrentPiece(offGraphics);
+                
+                // Draw ghost piece if enabled
+                if (SHOW_GHOST_PIECE) {
+                    drawGhostPiece(offGraphics);
+                }
             }
+            
+            // Draw next piece if enabled
+            if (SHOW_NEXT_PIECE) {
+                drawNextPiece(offGraphics);
+            }
+            
+            // Draw UI
+            drawUI(offGraphics);
         }
         
-        // Draw next piece if enabled
-        if (SHOW_NEXT_PIECE) {
-            drawNextPiece(g2d);
-        }
-        
-        // Draw UI
-        drawUI(g2d);
+        // Draw the off-screen image to the main graphics
+        g.drawImage(offScreen, 0, 0, this);
+        offGraphics.dispose();
     }
     
     private void drawHomeScreen(Graphics2D g) {
