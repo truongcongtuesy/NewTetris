@@ -1,0 +1,46 @@
+QUICK REFERENCE: WAV Files Needed for Tetris Game
+==================================================
+
+MUSIC FILES (place in sounds/music/ folder):
+--------------------------------------------
+1. background.wav  - Main game music (should loop well)
+2. menu.wav       - Home screen music (calm/ambient)  
+3. gameover.wav   - Game over music (sad/dramatic)
+
+SOUND EFFECTS (place in sounds/effects/ folder):
+-----------------------------------------------
+1. move.wav       - Short beep for piece movement
+2. rotate.wav     - Quick tone for piece rotation
+3. drop.wav       - Swoosh for hard drop
+4. line_clear.wav - Success chime for clearing lines
+5. level_up.wav   - Celebration sound for level up
+6. pause.wav      - Notification beep for pause
+7. gameover.wav   - Sad tone for game over
+
+RECOMMENDED SOURCES FOR FREE WAV FILES:
+--------------------------------------
+- freesound.org (requires free account)
+- zapsplat.com (free with account)
+- pixabay.com/music (royalty-free)
+- opengameart.org (game-specific sounds)
+
+SEARCH KEYWORDS:
+--------------
+- "tetris music wav"
+- "8-bit game music"
+- "puzzle game sounds"
+- "retro arcade music"
+- "game over sound effect"
+- "success chime wav"
+
+CURRENT GAME FEATURES:
+---------------------
+✅ Music system fully implemented
+✅ Volume controls (0-100%)
+✅ Hotkey controls (M, Ctrl+S, +/-, Ctrl++/-)
+✅ Config screen settings
+✅ Automatic music switching (menu → game → game over)
+⏳ Waiting for WAV files to complete audio experience
+
+The game works perfectly without audio files (uses system beeps as fallback).
+Once you add the WAV files, the full audio experience will be active!
