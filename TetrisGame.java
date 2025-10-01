@@ -86,9 +86,8 @@ public class TetrisGame extends JFrame implements KeyListener {
     // Config screen state
     private int selectedConfigItem = 0;
     private final String[] configItems = {
-        "Starting Level", "Ghost Piece", "Next Piece", "Sound Effects", 
-        "Background Music", "Game Theme", "Save Config", "Load Config", 
-        "View High Scores", "Reset Data", "Reset Window", "Back to Menu"
+        "Field Width", "Field Height", "Game Level", "Music", 
+        "Sound Effect", "Extend Mode", "Back"
     };
     
     // Configuration settings
@@ -151,9 +150,11 @@ public class TetrisGame extends JFrame implements KeyListener {
             setSize(multiWidth, multiHeight);
             setMinimumSize(new Dimension(multiWidth, multiHeight));
         } else {
-            // Single player size
-            setSize(BOARD_WIDTH * BLOCK_SIZE + 200, BOARD_HEIGHT * BLOCK_SIZE + 100);
-            setMinimumSize(new Dimension(BOARD_WIDTH * BLOCK_SIZE + 200, BOARD_HEIGHT * BLOCK_SIZE + 100));
+            // Single player size - increased for config screen
+            int width = Math.max(BOARD_WIDTH * BLOCK_SIZE + 200, 700); // Min 700px width
+            int height = Math.max(BOARD_HEIGHT * BLOCK_SIZE + 100, 600); // Min 600px height  
+            setSize(width, height);
+            setMinimumSize(new Dimension(width, height));
         }
         setLocationRelativeTo(null);
         
@@ -808,54 +809,162 @@ public class TetrisGame extends JFrame implements KeyListener {
     }
     
     private void drawConfigScreen(Graphics2D g) {
-        // Clear background
-        g.setColor(getThemeBackgroundColor());
+        // Clear background with light gray
+        g.setColor(new Color(240, 240, 240));
         g.fillRect(0, 0, getWidth(), getHeight());
         
         // Draw title
-        g.setColor(getThemeTextColor());
-        g.setFont(new Font("Arial", Font.BOLD, 36));
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.BOLD, 24));
         FontMetrics fm = g.getFontMetrics();
-        String title = "SETTINGS";
+        String title = "Configuration";
         int titleX = (getWidth() - fm.stringWidth(title)) / 2;
-        g.drawString(title, titleX, 120);
+        g.drawString(title, titleX, 50);
         
-        // Draw config items
-        g.setFont(new Font("Arial", Font.BOLD, 20));
-        fm = g.getFontMetrics();
+        // Draw separator line
+        g.setColor(Color.GRAY);
+        g.fillRect(50, 70, getWidth() - 100, 2);
         
-        for (int i = 0; i < configItems.length; i++) {
-            int yPos = 200 + i * 50;
+        int leftX = 60;
+        int rightX = 320;
+        int startY = 120;
+        int itemHeight = 50; // Reduced from 60 to fit more items
+        
+        g.setFont(new Font("Arial", Font.BOLD, 14)); // Bold font for labels
+        g.setColor(Color.BLACK); // Strong black color for text
+        
+        // Field Width
+        g.drawString("Field Width (No of cells):", leftX, startY);
+        drawSlider(g, rightX, startY - 15, BOARD_WIDTH, 5, 15, 0 == selectedConfigItem);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.setColor(Color.BLACK);
+        g.drawString(String.valueOf(BOARD_WIDTH), rightX + 220, startY);
+        
+        // Field Height  
+        g.drawString("Field Height (No of cells):", leftX, startY + itemHeight);
+        drawSlider(g, rightX, startY + itemHeight - 15, BOARD_HEIGHT, 15, 30, 1 == selectedConfigItem);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.setColor(Color.BLACK);
+        g.drawString(String.valueOf(BOARD_HEIGHT), rightX + 220, startY + itemHeight);
+        
+        // Game Level
+        g.drawString("Game Level:", leftX, startY + itemHeight * 2);
+        drawSlider(g, rightX, startY + itemHeight * 2 - 15, startingLevel, 1, 10, 2 == selectedConfigItem);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.setColor(Color.BLACK);
+        g.drawString(String.valueOf(startingLevel), rightX + 220, startY + itemHeight * 2);
+        
+        // Music checkbox
+        g.drawString("Music (On|Off):", leftX, startY + itemHeight * 3);
+        drawCheckbox(g, rightX, startY + itemHeight * 3 - 10, musicEnabled, 3 == selectedConfigItem);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.setColor(Color.BLACK);
+        g.drawString(musicEnabled ? "On" : "Off", rightX + 40, startY + itemHeight * 3);
+        
+        // Sound Effect checkbox
+        g.drawString("Sound Effect (On|Off):", leftX, startY + itemHeight * 4);
+        drawCheckbox(g, rightX, startY + itemHeight * 4 - 10, soundEnabled, 4 == selectedConfigItem);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.setColor(Color.BLACK);
+        g.drawString(soundEnabled ? "On" : "Off", rightX + 40, startY + itemHeight * 4);
+        
+        // Extend Mode checkbox (Ghost Piece Preview)
+        g.drawString("Extend Mode (On|Off):", leftX, startY + itemHeight * 5);
+        drawCheckbox(g, rightX, startY + itemHeight * 5 - 10, showGhostPiece, 5 == selectedConfigItem);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.setColor(Color.BLACK);
+        g.drawString(showGhostPiece ? "On" : "Off", rightX + 40, startY + itemHeight * 5);
+        
+        // Back button
+        int backY = startY + itemHeight * 6 + 10; // Adjusted for removed items
+        drawButton(g, getWidth() / 2 - 30, backY, 60, 30, "Back", 6 == selectedConfigItem);
+        
+        // Draw navigation hint with explanation
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        g.setColor(Color.BLACK);
+        g.drawString("Use UP/DOWN to navigate, LEFT/RIGHT to change values, ENTER to select", 60, backY + 40);
+        g.drawString("Extend Mode: Shows ghost piece preview (transparent piece at drop position)", 60, backY + 60);
+    }
+    
+    // Helper methods for drawing UI components
+    private void drawSlider(Graphics2D g, int x, int y, int value, int min, int max, boolean selected) {
+        int sliderWidth = 200;
+        int sliderHeight = 20;
+        
+        // Draw slider track
+        g.setColor(selected ? new Color(100, 150, 255) : Color.LIGHT_GRAY);
+        g.fillRoundRect(x, y, sliderWidth, sliderHeight, 10, 10);
+        g.setColor(Color.GRAY);
+        g.drawRoundRect(x, y, sliderWidth, sliderHeight, 10, 10);
+        
+        // Calculate thumb position
+        float ratio = (float)(value - min) / (max - min);
+        int thumbX = x + (int)(ratio * (sliderWidth - 20));
+        
+        // Draw thumb
+        g.setColor(selected ? new Color(50, 100, 200) : Color.DARK_GRAY);
+        g.fillOval(thumbX, y - 2, 20, sliderHeight + 4);
+        g.setColor(Color.BLACK);
+        g.drawOval(thumbX, y - 2, 20, sliderHeight + 4);
+    }
+    
+    private void drawCheckbox(Graphics2D g, int x, int y, boolean checked, boolean selected) {
+        int size = 20;
+        
+        // Draw checkbox border
+        g.setColor(selected ? new Color(100, 150, 255) : Color.GRAY);
+        g.fillRect(x, y, size, size);
+        g.setColor(Color.BLACK);
+        g.drawRect(x, y, size, size);
+        
+        // Draw checkmark if checked
+        if (checked) {
+            g.setColor(Color.WHITE);
+            g.setStroke(new BasicStroke(3));
+            g.drawLine(x + 4, y + 10, x + 8, y + 14);
+            g.drawLine(x + 8, y + 14, x + 16, y + 6);
+            g.setStroke(new BasicStroke(1));
+        }
+    }
+    
+    private void drawRadioButtons(Graphics2D g, int x, int y, String[] options, int selected, boolean highlighted) {
+        int spacing = 70; // Reduced spacing to fit better
+        for (int i = 0; i < options.length; i++) {
+            int radioX = x + i * spacing;
             
-            // Highlight selected item
-            if (i == selectedConfigItem) {
-                g.setColor(Color.YELLOW);
-                g.drawString("> " + getConfigItemText(i) + " <", 
-                           (getWidth() - fm.stringWidth("> " + getConfigItemText(i) + " <")) / 2, 
-                           yPos);
-            } else {
-                g.setColor(getThemeTextColor());
-                g.drawString(getConfigItemText(i), 
-                           (getWidth() - fm.stringWidth(getConfigItemText(i))) / 2, 
-                           yPos);
+            // Draw radio button circle
+            g.setColor(highlighted ? new Color(100, 150, 255) : Color.WHITE);
+            g.fillOval(radioX, y, 16, 16);
+            g.setColor(Color.BLACK); // Strong black border
+            g.drawOval(radioX, y, 16, 16);
+            
+            // Fill if selected
+            if (i == selected) {
+                g.setColor(new Color(50, 100, 200)); // Darker blue for better visibility
+                g.fillOval(radioX + 4, y + 4, 8, 8);
             }
+            
+            // Draw label
+            g.setColor(Color.BLACK); // Strong black text
+            g.setFont(new Font("Arial", Font.BOLD, 12)); // Bold font
+            g.drawString(options[i], radioX + 20, y + 12);
         }
+    }
+    
+    private void drawButton(Graphics2D g, int x, int y, int width, int height, String text, boolean selected) {
+        // Draw button background
+        g.setColor(selected ? new Color(100, 150, 255) : new Color(220, 220, 220));
+        g.fillRoundRect(x, y, width, height, 10, 10);
+        g.setColor(Color.BLACK); // Strong black border
+        g.drawRoundRect(x, y, width, height, 10, 10);
         
-        // Draw instructions
-        g.setFont(new Font("Arial", Font.PLAIN, 14));
-        g.setColor(Color.LIGHT_GRAY);
-        fm = g.getFontMetrics();
-        String[] instructions = {
-            "Use UP/DOWN arrows to navigate",
-            "Use LEFT/RIGHT arrows to change values",
-            "Press ENTER to select, ESC to go back"
-        };
-        
-        for (int i = 0; i < instructions.length; i++) {
-            g.drawString(instructions[i], 
-                       (getWidth() - fm.stringWidth(instructions[i])) / 2, 
-                       500 + i * 20);
-        }
+        // Draw button text
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.setColor(Color.BLACK); // Strong black text
+        FontMetrics fm = g.getFontMetrics();
+        int textX = x + (width - fm.stringWidth(text)) / 2;
+        int textY = y + (height + fm.getAscent()) / 2 - 2;
+        g.drawString(text, textX, textY);
     }
     
     private String getConfigItemText(int index) {
@@ -2150,7 +2259,6 @@ public class TetrisGame extends JFrame implements KeyListener {
         showPlayerSelection = false;
         showNameEntry = false;
         isMultiplayerMode = false;
-        adjustWindowSize(); // Dynamic resize back to single player
         gameOver = false;
         gameOver2 = false;
         paused = false;
@@ -2159,11 +2267,8 @@ public class TetrisGame extends JFrame implements KeyListener {
         }
         selectedMenuItem = 0; // Reset to "Play Game"
         
-        // Resize window back to single player size
-        int singleWidth = BOARD_WIDTH * BLOCK_SIZE + 200;
-        int singleHeight = BOARD_HEIGHT * BLOCK_SIZE + 100;
-        setSize(singleWidth, singleHeight);
-        setLocationRelativeTo(null);
+        // Resize window with proper size calculation
+        adjustWindowSize();
         
         // Start menu music
         if (musicEnabled && soundManager != null) {
@@ -2178,55 +2283,41 @@ public class TetrisGame extends JFrame implements KeyListener {
         showHomeScreen = false;
         showConfigScreen = true;
         selectedConfigItem = 0;
+        adjustWindowSize(); // Resize for config screen
         repaint();
     }
     
     private void changeConfigValue(int direction) {
         switch (selectedConfigItem) {
-            case 0: // Starting Level
-                startingLevel = Math.max(1, Math.min(20, startingLevel + direction));
+            case 0: // Field Width (readonly for now)
                 break;
-            case 1: // Ghost Piece
-                showGhostPiece = !showGhostPiece;
+            case 1: // Field Height (readonly for now)
                 break;
-            case 2: // Next Piece
-                showNextPiece = !showNextPiece;
+            case 2: // Game Level
+                startingLevel = Math.max(1, Math.min(10, startingLevel + direction));
                 break;
-            case 3: // Sound Effects
-                soundEnabled = !soundEnabled;
-                showMessage("Sound Effects: " + (soundEnabled ? "ON" : "OFF"));
-                break;
-            case 4: // Background Music
+            case 3: // Music
                 musicEnabled = !musicEnabled;
-                showMessage("Background Music: " + (musicEnabled ? "ON" : "OFF"));
-                break;
-            case 5: // Theme
-                int currentThemeIndex = 0;
-                for (int i = 0; i < themes.length; i++) {
-                    if (themes[i].equals(gameTheme)) {
-                        currentThemeIndex = i;
-                        break;
+                if (soundManager != null) {
+                    if (musicEnabled) {
+                        if (showHomeScreen) {
+                            soundManager.playBackgroundMusic("menu", musicVolume);
+                        } else {
+                            soundManager.playBackgroundMusic("background", musicVolume);
+                        }
+                    } else {
+                        soundManager.stopBackgroundMusic();
                     }
                 }
-                currentThemeIndex = (currentThemeIndex + direction + themes.length) % themes.length;
-                gameTheme = themes[currentThemeIndex];
-                centerWindow(); // Re-center after theme change
-                showMessage("Theme changed to: " + gameTheme);
                 break;
-            case 6: // Save Config
-                if (direction != 0) saveConfiguration();
+            case 4: // Sound Effect
+                soundEnabled = !soundEnabled;
                 break;
-            case 7: // Load Config
-                if (direction != 0) loadConfiguration();
+            case 5: // Extend Mode (Ghost Piece)
+                showGhostPiece = !showGhostPiece;
                 break;
-            case 8: // View High Scores
-                if (direction != 0) showHighScores();
-                break;
-            case 9: // Reset Data
-                if (direction != 0) resetAllData();
-                break;
-            case 10: // Reset Window
-                if (direction != 0) resetToDefaultSize();
+            case 6: // Back
+                if (direction != 0) returnToHomeScreen();
                 break;
         }
     }
@@ -2790,15 +2881,18 @@ public class TetrisGame extends JFrame implements KeyListener {
     }
     
     private Dimension calculateOptimalWindowSize() {
-        if (isMultiplayerMode) {
+        if (showConfigScreen) {
+            // Config screen needs more space
+            return new Dimension(700, 600);
+        } else if (isMultiplayerMode) {
             // For multiplayer: 2 boards + 2 info panels + spacing
             int multiWidth = (2 * BOARD_WIDTH * BLOCK_SIZE) + (2 * 160) + 100; // 100 for spacing
             int multiHeight = BOARD_HEIGHT * BLOCK_SIZE + 150; // Extra height for title and panels
             return new Dimension(multiWidth, multiHeight);
         } else {
-            // Single player size with extra space for UI elements
-            int singleWidth = BOARD_WIDTH * BLOCK_SIZE + 200;
-            int singleHeight = BOARD_HEIGHT * BLOCK_SIZE + 100;
+            // Single player/menu size
+            int singleWidth = Math.max(BOARD_WIDTH * BLOCK_SIZE + 200, 500);
+            int singleHeight = Math.max(BOARD_HEIGHT * BLOCK_SIZE + 100, 600);
             return new Dimension(singleWidth, singleHeight);
         }
     }
