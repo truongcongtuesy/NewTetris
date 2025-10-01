@@ -1,0 +1,22 @@
+{
+  "highScores": [
+    {
+      "playerName": "Player",
+      "score": 153,
+      "level": 1,
+      "lines": 0,
+      "date": "2025-10-01 14:03:31",
+      "gameMode": "Single Player",
+      "playerType": "Player"
+    },
+    {
+      "playerName": "Player",
+      "score": 98,
+      "level": 1,
+      "lines": 0,
+      "date": ""2025-10-01 13",
+      "gameMode": "Single Player",
+      "playerType": "Player"
+    }
+  ]
+}

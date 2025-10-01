@@ -87,7 +87,8 @@ public class TetrisGame extends JFrame implements KeyListener {
     private int selectedConfigItem = 0;
     private final String[] configItems = {
         "Starting Level", "Ghost Piece", "Next Piece", "Sound Effects", 
-        "Background Music", "Game Theme", "Back to Menu"
+        "Background Music", "Game Theme", "Save Config", "Load Config", 
+        "View High Scores", "Reset Data", "Reset Window", "Back to Menu"
     };
     
     // Configuration settings
@@ -135,6 +136,9 @@ public class TetrisGame extends JFrame implements KeyListener {
         setTitle("Tetris Game");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
+        
+        // Load saved configuration
+        loadConfiguration();
         
         // Initialize game
         initializeGame();
@@ -862,7 +866,12 @@ public class TetrisGame extends JFrame implements KeyListener {
             case 3: return "Sound Effects: " + (soundEnabled ? "ON" : "OFF");
             case 4: return "Background Music: " + (musicEnabled ? "ON" : "OFF");
             case 5: return "Theme: " + gameTheme;
-            case 6: return "Back to Menu";
+            case 6: return "💾 Save Config";
+            case 7: return "📁 Load Config";
+            case 8: return "🏆 View High Scores";
+            case 9: return "🗑️ Reset Data";
+            case 10: return "🖼️ Reset Window";
+            case 11: return "🏠 Back to Menu";
             default: return "";
         }
     }
@@ -1155,7 +1164,7 @@ public class TetrisGame extends JFrame implements KeyListener {
             g.setFont(new Font("Arial", Font.PLAIN, 10));
             
             if (playerNum == 1) {
-                g.drawString("Controls:", x + 10, textY);
+                g.drawString("Player 1 Controls:", x + 10, textY);
                 textY += 15;
                 g.drawString("A/←: Left", x + 10, textY);
                 textY += 12;
@@ -1164,8 +1173,9 @@ public class TetrisGame extends JFrame implements KeyListener {
                 g.drawString("S/↓: Down", x + 10, textY);
                 textY += 12;
                 g.drawString("W/↑: Rotate", x + 10, textY);
+                textY += 15; // Extra spacing
             } else {
-                g.drawString("Controls:", x + 10, textY);
+                g.drawString("Player 2 Controls:", x + 10, textY);
                 textY += 15;
                 g.drawString("J: Left", x + 10, textY);
                 textY += 12;
@@ -1174,6 +1184,7 @@ public class TetrisGame extends JFrame implements KeyListener {
                 g.drawString("K: Down", x + 10, textY);
                 textY += 12;
                 g.drawString("I: Rotate", x + 10, textY);
+                textY += 15; // Extra spacing
             }
         }
         
@@ -1560,22 +1571,37 @@ public class TetrisGame extends JFrame implements KeyListener {
             g.drawString("GAME OVER", 50, BOARD_HEIGHT * BLOCK_SIZE / 2 + 50);
         }
         
-        // Controls
+        // Controls section - organize in columns
         g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.drawString("CONTROLS", startX, startY + 150);
+        
         g.setFont(new Font("Arial", Font.PLAIN, 12));
-        g.drawString("Controls:", startX, startY + 150);
-        g.drawString("Move: ,/. or A/D", startX, startY + 170);
-        g.drawString("Down: Space/↓", startX, startY + 190);
-        g.drawString("Rotate: L or W/↑", startX, startY + 210);
-        g.drawString("Pause: P", startX, startY + 230);
-        g.drawString("Sound: Ctrl+S", startX, startY + 250);
-        g.drawString("Music: M", startX, startY + 270);
-        g.drawString("ESC: Home Menu", startX, startY + 290);
+        int col1X = startX;
+        int col2X = startX + 160;
+        
+        // Column 1 - Basic Controls
+        g.drawString("Basic Controls:", col1X, startY + 175);
+        g.drawString("Move: ,/. or A/D", col1X, startY + 195);
+        g.drawString("Down: Space/↓", col1X, startY + 215);
+        g.drawString("Rotate: L or W/↑", col1X, startY + 235);
+        g.drawString("Pause: P", col1X, startY + 255);
+        
+        // Column 2 - Special Controls  
+        g.drawString("Special Controls:", col2X, startY + 175);
+        g.drawString("Sound: Ctrl+S", col2X, startY + 195);
+        g.drawString("Music: M", col2X, startY + 215);
+        g.drawString("Center Window: Ctrl+C", col2X, startY + 235);
+        g.drawString("Reset Window: Ctrl+R", col2X, startY + 255);
+        g.drawString("ESC: Home Menu", col2X, startY + 275);
         
         // Sound/Music status
         g.setFont(new Font("Arial", Font.BOLD, 12));
-        g.drawString("Sound: " + (soundEnabled ? "ON" : "OFF"), startX, startY + 320);
-        g.drawString("Music: " + (musicEnabled ? "ON" : "OFF"), startX, startY + 340);
+        g.setColor(new Color(0, 100, 0)); // Dark green
+        g.drawString("STATUS", startX, startY + 305);
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        g.drawString("Sound: " + (soundEnabled ? "ON" : "OFF"), startX, startY + 325);
+        g.drawString("Music: " + (musicEnabled ? "ON" : "OFF"), startX, startY + 345);
     }
     
     // Key controls
@@ -1709,6 +1735,7 @@ public class TetrisGame extends JFrame implements KeyListener {
                     }
                     // Start multiplayer game (placeholder for now)
                     isMultiplayerMode = true;
+                    adjustWindowSize(); // Dynamic resize for multiplayer
                     showNameEntry = false;
                     startMultiplayerGame(); // Will be replaced with startMultiplayerGame later
                 }
@@ -1812,16 +1839,42 @@ public class TetrisGame extends JFrame implements KeyListener {
                 break;
             case KeyEvent.VK_M:          // Toggle Music
                 musicEnabled = !musicEnabled;
-                showMessage("Music: " + (musicEnabled ? "ON" : "OFF"));
+                if (soundManager != null) {
+                    if (musicEnabled) {
+                        // Resume music based on current state
+                        if (showHomeScreen) {
+                            soundManager.playBackgroundMusic("menu", musicVolume);
+                        } else if (gameOver) {
+                            soundManager.playBackgroundMusic("gameover", musicVolume);
+                        } else if (paused) {
+                            soundManager.playBackgroundMusic("pause", musicVolume);
+                        } else {
+                            soundManager.playBackgroundMusic("background", musicVolume);
+                        }
+                    } else {
+                        // Stop all music
+                        soundManager.stopBackgroundMusic();
+                    }
+                }
                 break;
             case KeyEvent.VK_P:          // Pause/Resume
                 paused = !paused;
                 if (paused) {
                     gameTimer.stop();
                     playSound("pause");
+                    // Switch to pause music
+                    if (musicEnabled && soundManager != null) {
+                        soundManager.stopBackgroundMusic();
+                        soundManager.playBackgroundMusic("pause", musicVolume);
+                    }
                 } else {
                     gameTimer.start();
                     playSound("resume");
+                    // Resume game music
+                    if (musicEnabled && soundManager != null) {
+                        soundManager.stopBackgroundMusic();
+                        soundManager.playBackgroundMusic("background", musicVolume);
+                    }
                 }
                 break;
             case KeyEvent.VK_R:          // Restart
@@ -1846,6 +1899,20 @@ public class TetrisGame extends JFrame implements KeyListener {
                 }
                 break;
         }
+        
+        // Global shortcuts (work in any state)
+        if (e.isControlDown()) {
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_C: // Ctrl+C: Center window
+                    centerWindow();
+                    showMessage("🎯 Window centered!");
+                    break;
+                case KeyEvent.VK_R: // Ctrl+R: Reset window size
+                    resetToDefaultSize();
+                    break;
+            }
+        }
+        
         repaint();
     }
     
@@ -2032,6 +2099,8 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     private void startGame() {
         showHomeScreen = false;
+        isMultiplayerMode = false; // Ensure single player mode
+        adjustWindowSize(); // Resize to single player
         initializeGame();
         fallSpeed = 500;
         if (gameTimer != null) {
@@ -2081,6 +2150,7 @@ public class TetrisGame extends JFrame implements KeyListener {
         showPlayerSelection = false;
         showNameEntry = false;
         isMultiplayerMode = false;
+        adjustWindowSize(); // Dynamic resize back to single player
         gameOver = false;
         gameOver2 = false;
         paused = false;
@@ -2140,6 +2210,23 @@ public class TetrisGame extends JFrame implements KeyListener {
                 }
                 currentThemeIndex = (currentThemeIndex + direction + themes.length) % themes.length;
                 gameTheme = themes[currentThemeIndex];
+                centerWindow(); // Re-center after theme change
+                showMessage("Theme changed to: " + gameTheme);
+                break;
+            case 6: // Save Config
+                if (direction != 0) saveConfiguration();
+                break;
+            case 7: // Load Config
+                if (direction != 0) loadConfiguration();
+                break;
+            case 8: // View High Scores
+                if (direction != 0) showHighScores();
+                break;
+            case 9: // Reset Data
+                if (direction != 0) resetAllData();
+                break;
+            case 10: // Reset Window
+                if (direction != 0) resetToDefaultSize();
                 break;
         }
     }
@@ -2165,10 +2252,16 @@ public class TetrisGame extends JFrame implements KeyListener {
     // Game Over dialog
     private void showGameOverDialog() {
         playSound("gameOver");
+        
+        // Record the high score
+        String currentGameMode = isMultiplayerMode ? "Multiplayer" : 
+                               (player1Type == 1) ? "AI Mode" : "Single Player";
+        addCurrentScore(currentGameMode, "Player");
+        
         int result = JOptionPane.showOptionDialog(
             this,
             "Game Over!\n\nScore: " + score + "\nLevel: " + level + "\nLines: " + linesCleared + 
-            "\n\nWhat would you like to do?",
+            "\n\n✅ Score saved to high scores!\n\nWhat would you like to do?",
             "Game Over",
             JOptionPane.YES_NO_CANCEL_OPTION,
             JOptionPane.INFORMATION_MESSAGE,
@@ -2194,6 +2287,10 @@ public class TetrisGame extends JFrame implements KeyListener {
     // AI Win Dialog for single player
     private void showAIWinDialog() {
         playSound("gameOver");
+        
+        // Record the AI's high score
+        addCurrentScore("AI Mode", "AI");
+        
         int result = JOptionPane.showOptionDialog(
             this,
             "🤖 AI WINS! 🤖\n\n" +
@@ -2201,7 +2298,8 @@ public class TetrisGame extends JFrame implements KeyListener {
             "Final Score: " + score + "\n" +
             "Level: " + level + "\n" +
             "Lines: " + linesCleared + 
-            "\n\nBetter luck next time, human! 😎\n\nWhat would you like to do?",
+            "\n\n✅ AI score saved to high scores!\n" +
+            "Better luck next time, human! 😎\n\nWhat would you like to do?",
             "AI Victory!",
             JOptionPane.YES_NO_CANCEL_OPTION,
             JOptionPane.INFORMATION_MESSAGE,
@@ -2270,9 +2368,140 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     // Show temporary message to user
     private void showMessage(String message) {
-        // For now, just print to console
-        // In a full implementation, you could show a temporary overlay on screen
+        // Just print to console for debugging
         System.out.println(message);
+    }
+    
+    // Save/Load Configuration functionality
+    private void saveConfiguration() {
+        GameData.Config config = new GameData.Config(
+            startingLevel, showGhostPiece, showNextPiece, gameTheme,
+            soundEnabled, musicEnabled, (int)musicVolume, (int)effectsVolume, aiWinScore
+        );
+        
+        if (GameData.saveConfig(config)) {
+            showMessage("✅ Configuration saved successfully!");
+            javax.swing.JOptionPane.showMessageDialog(this, 
+                "Configuration saved successfully!\n\nSettings will be restored when you restart the game.",
+                "Save Complete", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            showMessage("❌ Failed to save configuration");
+            javax.swing.JOptionPane.showMessageDialog(this, 
+                "Failed to save configuration. Please check file permissions.",
+                "Save Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void loadConfiguration() {
+        GameData.Config config = GameData.loadConfig();
+        
+        // Apply loaded configuration
+        startingLevel = config.startingLevel;
+        showGhostPiece = config.showGhostPiece;
+        showNextPiece = config.showNextPiece;
+        gameTheme = config.gameTheme;
+        soundEnabled = config.soundEnabled;
+        musicEnabled = config.musicEnabled;
+        musicVolume = (float)config.musicVolume;
+        effectsVolume = (float)config.effectsVolume;
+        aiWinScore = config.aiWinScore;
+        
+        // Update sound system with loaded settings
+        if (soundManager != null) {
+            soundManager.setMusicVolume(musicVolume);
+            soundManager.setEffectsVolume(effectsVolume);
+        }
+        
+        // Re-center window after loading new settings
+        centerWindow();
+        showMessage("✅ Configuration loaded successfully!");
+    }
+    
+    private void showHighScores() {
+        java.util.List<GameData.HighScore> scores = GameData.loadHighScores();
+        
+        if (scores.isEmpty()) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "No high scores yet!\n\nPlay some games to set records.",
+                "High Scores", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        StringBuilder message = new StringBuilder("🏆 HIGH SCORES 🏆\\n\\n");
+        message.append("Rank | Player | Score | Level | Lines | Mode | Type | Date\\n");
+        message.append("-----|--------|-------|-------|-------|------|------|-----\\n");
+        
+        for (int i = 0; i < Math.min(scores.size(), 10); i++) {
+            GameData.HighScore score = scores.get(i);
+            message.append(String.format("%2d   | %-6s | %5d | %5d | %5d | %-4s | %-4s | %s\\n",
+                i + 1, score.playerName, score.score, score.level, score.lines,
+                score.gameMode, score.playerType, score.date.substring(0, 10)));
+        }
+        
+        javax.swing.JOptionPane.showMessageDialog(this, message.toString(),
+            "High Scores", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    private void resetAllData() {
+        int result = javax.swing.JOptionPane.showConfirmDialog(this,
+            "⚠️ WARNING ⚠️\\n\\n" +
+            "This will permanently delete:\\n" +
+            "• All saved configuration settings\\n" +
+            "• All high scores\\n" +
+            "• Game progress data\\n\\n" +
+            "This action cannot be undone!\\n\\n" +
+            "Are you sure you want to continue?",
+            "Reset All Data",
+            javax.swing.JOptionPane.YES_NO_OPTION,
+            javax.swing.JOptionPane.WARNING_MESSAGE);
+        
+        if (result == javax.swing.JOptionPane.YES_OPTION) {
+            boolean configDeleted = GameData.deleteConfig();
+            boolean scoresDeleted = GameData.deleteScores();
+            
+            if (configDeleted || scoresDeleted) {
+                // Reset to defaults
+                startingLevel = 1;
+                showGhostPiece = true;
+                showNextPiece = true;
+                gameTheme = "Classic";
+                soundEnabled = true;
+                musicEnabled = true;
+                musicVolume = 70;
+                effectsVolume = 80;
+                aiWinScore = 500;
+                
+                javax.swing.JOptionPane.showMessageDialog(this,
+                    "✅ All data has been reset!\\n\\n" +
+                    "Configuration and high scores have been deleted.\\n" +
+                    "Game has been restored to default settings.",
+                    "Reset Complete", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                    
+                showMessage("🔄 All data reset to defaults");
+            } else {
+                javax.swing.JOptionPane.showMessageDialog(this,
+                    "❌ No data files found to delete.\\n\\n" +
+                    "Settings are already at defaults.",
+                    "Reset Info", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            }
+            
+            repaint();
+        }
+    }
+    
+    // Add high score when game ends
+    private void addCurrentScore(String gameMode, String playerType) {
+        if (score > 0) { // Only add if score is meaningful
+            String playerName = isMultiplayerMode ? 
+                (playerType.equals("Player1") ? player1Name : player2Name) : "Player";
+            
+            if (playerName == null || playerName.trim().isEmpty()) {
+                playerName = "Anonymous";
+            }
+            
+            GameData.addHighScore(playerName, score, level, linesCleared, gameMode, playerType);
+            showMessage("📊 Score recorded: " + score + " points");
+        }
     }
     
     // AI Player class
@@ -2548,5 +2777,40 @@ public class TetrisGame extends JFrame implements KeyListener {
                 game.setVisible(true);
             }
         });
+    }
+    
+    // Dynamic window sizing methods
+    private void adjustWindowSize() {
+        Dimension newSize = calculateOptimalWindowSize();
+        setSize(newSize);
+        setMinimumSize(newSize);
+        centerWindow();
+        revalidate();
+        repaint();
+    }
+    
+    private Dimension calculateOptimalWindowSize() {
+        if (isMultiplayerMode) {
+            // For multiplayer: 2 boards + 2 info panels + spacing
+            int multiWidth = (2 * BOARD_WIDTH * BLOCK_SIZE) + (2 * 160) + 100; // 100 for spacing
+            int multiHeight = BOARD_HEIGHT * BLOCK_SIZE + 150; // Extra height for title and panels
+            return new Dimension(multiWidth, multiHeight);
+        } else {
+            // Single player size with extra space for UI elements
+            int singleWidth = BOARD_WIDTH * BLOCK_SIZE + 200;
+            int singleHeight = BOARD_HEIGHT * BLOCK_SIZE + 100;
+            return new Dimension(singleWidth, singleHeight);
+        }
+    }
+    
+    private void centerWindow() {
+        setLocationRelativeTo(null); // Center on screen
+    }
+    
+    private void resetToDefaultSize() {
+        // Reset to single player mode size as default
+        isMultiplayerMode = false;
+        adjustWindowSize();
+        showMessage("🏠 Window reset to default size and centered!");
     }
 }
