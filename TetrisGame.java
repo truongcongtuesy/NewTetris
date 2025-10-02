@@ -3,6 +3,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 
+@SuppressWarnings("unused")
 public class TetrisGame extends JFrame implements KeyListener {
     // Game configuration
     private static final boolean MULTIPLAYER = false; // Set to true for 2-player mode
@@ -80,8 +81,9 @@ public class TetrisGame extends JFrame implements KeyListener {
     private boolean showSplashScreen = true;
     private boolean showHomeScreen = false;
     private boolean showConfigScreen = false;
-    private int selectedMenuItem = 0; // 0 = Play Game, 1 = Multiplayer, 2 = Settings, 3 = Exit
-    private final String[] menuItems = {"Play Game", "Multiplayer", "Settings", "Exit"};
+    private boolean showHighscoreScreen = false;
+    private int selectedMenuItem = 0; // 0 = Play Game, 1 = Multiplayer, 2 = Highscore, 3 = Settings, 4 = Exit
+    private final String[] menuItems = {"Play Game", "Multiplayer", "Highscore", "Settings", "Exit"};
     
     // Config screen state
     private int selectedConfigItem = 0;
@@ -95,7 +97,7 @@ public class TetrisGame extends JFrame implements KeyListener {
     private static boolean showGhostPiece = true;
     private static boolean showNextPiece = true;
     private static String gameTheme = "Classic";
-    private static final String[] themes = {"Classic", "Dark", "Colorful"};
+    // private static final String[] themes = {"Classic", "Dark", "Colorful"}; // Unused for now
     private static int aiWinScore = AI_WIN_SCORE; // Configurable AI win score
     
     // Multiplayer system
@@ -142,20 +144,10 @@ public class TetrisGame extends JFrame implements KeyListener {
         // Initialize game
         initializeGame();
         
-        // Set up the display - adjust size for multiplayer
-        if (isMultiplayerMode) {
-            // For multiplayer: 2 boards + 2 info panels + spacing
-            int multiWidth = (2 * BOARD_WIDTH * BLOCK_SIZE) + (2 * 160) + 100; // 100 for spacing
-            int multiHeight = BOARD_HEIGHT * BLOCK_SIZE + 150; // Extra height for title and panels
-            setSize(multiWidth, multiHeight);
-            setMinimumSize(new Dimension(multiWidth, multiHeight));
-        } else {
-            // Single player size - increased for config screen
-            int width = Math.max(BOARD_WIDTH * BLOCK_SIZE + 200, 700); // Min 700px width
-            int height = Math.max(BOARD_HEIGHT * BLOCK_SIZE + 100, 600); // Min 600px height  
-            setSize(width, height);
-            setMinimumSize(new Dimension(width, height));
-        }
+        // Set up the display with consistent large size
+        Dimension fixedSize = calculateOptimalWindowSize();
+        setSize(fixedSize);
+        setMinimumSize(fixedSize);
         setLocationRelativeTo(null);
         
         // Add key listener
@@ -616,6 +608,8 @@ public class TetrisGame extends JFrame implements KeyListener {
             drawHomeScreen(offGraphics);
         } else if (showConfigScreen) {
             drawConfigScreen(offGraphics);
+        } else if (showHighscoreScreen) {
+            drawHighscoreScreen(offGraphics);
         } else if (showPlayerSelection) {
             drawPlayerSelectionScreen(offGraphics);
         } else if (showNameEntry) {
@@ -636,11 +630,6 @@ public class TetrisGame extends JFrame implements KeyListener {
                     if (showGhostPiece) {
                         drawGhostPiece(offGraphics);
                     }
-                }
-                
-                // Draw next piece if enabled in config
-                if (showNextPiece) {
-                    drawNextPiece(offGraphics);
                 }
                 
                 // Draw UI only for single player
@@ -790,100 +779,132 @@ public class TetrisGame extends JFrame implements KeyListener {
             }
         }
         
-        // Draw instructions
-        g.setFont(new Font("Arial", Font.PLAIN, 14));
+        // Draw instructions (positioned below menu items with proper spacing)
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
         g.setColor(Color.LIGHT_GRAY);
         fm = g.getFontMetrics();
+        
+        // Calculate starting position based on menu items
+        int menuEndY = 280 + (menuItems.length - 1) * 60; // Last menu item position
+        int instructionStartY = menuEndY + 80; // Add space after menu
+        
         String[] instructions = {
             "Use UP/DOWN arrows to navigate",
             "Press ENTER to select",
-            "Controls: ,/. (move), L (rotate), Space (drop)",
-            "M (music), Ctrl+S (sound), P (pause)"
+            "Single Player: WASD controls + SPACE (hard drop)",
+            "Multiplayer: P1(WASD) vs P2(Arrow Keys) | M(music) P(pause)"
         };
         
         for (int i = 0; i < instructions.length; i++) {
             g.drawString(instructions[i], 
                        (getWidth() - fm.stringWidth(instructions[i])) / 2, 
-                       450 + i * 20);
+                       instructionStartY + i * 18);
         }
     }
     
     private void drawConfigScreen(Graphics2D g) {
-        // Clear background with light gray
+        // Enhanced config screen layout for large window
         g.setColor(new Color(240, 240, 240));
         g.fillRect(0, 0, getWidth(), getHeight());
         
-        // Draw title
-        g.setColor(Color.BLACK);
-        g.setFont(new Font("Arial", Font.BOLD, 24));
+        // Apply modern styling
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        
+        // Draw main title with background
+        g.setColor(new Color(70, 130, 180));
+        g.fillRoundRect(50, 20, getWidth() - 100, 60, 15, 15);
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 28));
         FontMetrics fm = g.getFontMetrics();
-        String title = "Configuration";
+        String title = "⚙️ Configuration";
         int titleX = (getWidth() - fm.stringWidth(title)) / 2;
-        g.drawString(title, titleX, 50);
+        g.drawString(title, titleX, 55);
         
-        // Draw separator line
-        g.setColor(Color.GRAY);
-        g.fillRect(50, 70, getWidth() - 100, 2);
+        // Create two-column layout
+        int col1X = 80;
+        int col2X = getWidth()/2 + 40;
+        int startY = 140;
+        int itemHeight = 70;
+        int panelWidth = getWidth()/2 - 120;
         
-        int leftX = 60;
-        int rightX = 320;
-        int startY = 120;
-        int itemHeight = 50; // Reduced from 60 to fit more items
+        // Left column panel
+        g.setColor(new Color(255, 255, 255, 220));
+        g.fillRoundRect(col1X - 20, startY - 30, panelWidth, 350, 15, 15);
+        g.setColor(new Color(100, 100, 100));
+        g.drawRoundRect(col1X - 20, startY - 30, panelWidth, 350, 15, 15);
         
-        g.setFont(new Font("Arial", Font.BOLD, 14)); // Bold font for labels
-        g.setColor(Color.BLACK); // Strong black color for text
+        // Right column panel
+        g.setColor(new Color(255, 255, 255, 220));
+        g.fillRoundRect(col2X - 20, startY - 30, panelWidth, 350, 15, 15);
+        g.setColor(new Color(100, 100, 100));
+        g.drawRoundRect(col2X - 20, startY - 30, panelWidth, 350, 15, 15);
+        
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.setColor(Color.BLACK);
+        
+        // Left column - Game Settings
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("🎮 Game Settings", col1X, startY - 5);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
         
         // Field Width
-        g.drawString("Field Width (No of cells):", leftX, startY);
-        drawSlider(g, rightX, startY - 15, BOARD_WIDTH, 5, 15, 0 == selectedConfigItem);
-        g.setFont(new Font("Arial", Font.BOLD, 14));
-        g.setColor(Color.BLACK);
-        g.drawString(String.valueOf(BOARD_WIDTH), rightX + 220, startY);
+        g.drawString("Field Width (cells):", col1X, startY + 35);
+        drawSlider(g, col1X + 20, startY + 40, BOARD_WIDTH, 5, 15, 0 == selectedConfigItem);
+        g.drawString(String.valueOf(BOARD_WIDTH), col1X + 200, startY + 55);
         
-        // Field Height  
-        g.drawString("Field Height (No of cells):", leftX, startY + itemHeight);
-        drawSlider(g, rightX, startY + itemHeight - 15, BOARD_HEIGHT, 15, 30, 1 == selectedConfigItem);
-        g.setFont(new Font("Arial", Font.BOLD, 14));
-        g.setColor(Color.BLACK);
-        g.drawString(String.valueOf(BOARD_HEIGHT), rightX + 220, startY + itemHeight);
+        // Field Height
+        g.drawString("Field Height (cells):", col1X, startY + itemHeight + 10);
+        drawSlider(g, col1X + 20, startY + itemHeight + 15, BOARD_HEIGHT, 15, 30, 1 == selectedConfigItem);
+        g.drawString(String.valueOf(BOARD_HEIGHT), col1X + 200, startY + itemHeight + 30);
         
         // Game Level
-        g.drawString("Game Level:", leftX, startY + itemHeight * 2);
-        drawSlider(g, rightX, startY + itemHeight * 2 - 15, startingLevel, 1, 10, 2 == selectedConfigItem);
+        g.drawString("Starting Level:", col1X, startY + itemHeight * 2 - 15);
+        drawSlider(g, col1X + 20, startY + itemHeight * 2 - 10, startingLevel, 1, 10, 2 == selectedConfigItem);
+        g.drawString(String.valueOf(startingLevel), col1X + 200, startY + itemHeight * 2 + 5);
+        
+        // Right column - Audio & Display Settings
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("🎵 Audio & Display", col2X, startY - 5);
         g.setFont(new Font("Arial", Font.BOLD, 14));
-        g.setColor(Color.BLACK);
-        g.drawString(String.valueOf(startingLevel), rightX + 220, startY + itemHeight * 2);
         
         // Music checkbox
-        g.drawString("Music (On|Off):", leftX, startY + itemHeight * 3);
-        drawCheckbox(g, rightX, startY + itemHeight * 3 - 10, musicEnabled, 3 == selectedConfigItem);
-        g.setFont(new Font("Arial", Font.BOLD, 14));
-        g.setColor(Color.BLACK);
-        g.drawString(musicEnabled ? "On" : "Off", rightX + 40, startY + itemHeight * 3);
+        g.drawString("Background Music:", col2X, startY + 35);
+        drawCheckbox(g, col2X + 20, startY + 40, musicEnabled, 3 == selectedConfigItem);
+        g.drawString(musicEnabled ? "ON" : "OFF", col2X + 60, startY + 55);
         
-        // Sound Effect checkbox
-        g.drawString("Sound Effect (On|Off):", leftX, startY + itemHeight * 4);
-        drawCheckbox(g, rightX, startY + itemHeight * 4 - 10, soundEnabled, 4 == selectedConfigItem);
-        g.setFont(new Font("Arial", Font.BOLD, 14));
-        g.setColor(Color.BLACK);
-        g.drawString(soundEnabled ? "On" : "Off", rightX + 40, startY + itemHeight * 4);
+        // Sound Effects checkbox
+        g.drawString("Sound Effects:", col2X, startY + itemHeight + 10);
+        drawCheckbox(g, col2X + 20, startY + itemHeight + 15, soundEnabled, 4 == selectedConfigItem);
+        g.drawString(soundEnabled ? "ON" : "OFF", col2X + 60, startY + itemHeight + 30);
         
-        // Extend Mode checkbox (Ghost Piece Preview)
-        g.drawString("Extend Mode (On|Off):", leftX, startY + itemHeight * 5);
-        drawCheckbox(g, rightX, startY + itemHeight * 5 - 10, showGhostPiece, 5 == selectedConfigItem);
-        g.setFont(new Font("Arial", Font.BOLD, 14));
-        g.setColor(Color.BLACK);
-        g.drawString(showGhostPiece ? "On" : "Off", rightX + 40, startY + itemHeight * 5);
+        // Extend Mode checkbox
+        g.drawString("Extend Mode (Ghost Piece):", col2X, startY + itemHeight * 2 - 15);
+        drawCheckbox(g, col2X + 20, startY + itemHeight * 2 - 10, showGhostPiece, 5 == selectedConfigItem);
+        g.drawString(showGhostPiece ? "ON" : "OFF", col2X + 60, startY + itemHeight * 2 + 5);
         
-        // Back button
-        int backY = startY + itemHeight * 6 + 10; // Adjusted for removed items
-        drawButton(g, getWidth() / 2 - 30, backY, 60, 30, "Back", 6 == selectedConfigItem);
+        // Control instructions panel
+        int instructY = startY + 340;
+        g.setColor(new Color(245, 245, 245));
+        g.fillRoundRect(50, instructY, getWidth() - 100, 80, 15, 15);
+        g.setColor(new Color(100, 100, 100));
+        g.drawRoundRect(50, instructY, getWidth() - 100, 80, 15, 15);
         
-        // Draw navigation hint with explanation
-        g.setFont(new Font("Arial", Font.PLAIN, 12));
-        g.setColor(Color.BLACK);
-        g.drawString("Use UP/DOWN to navigate, LEFT/RIGHT to change values, ENTER to select", 60, backY + 40);
-        g.drawString("Extend Mode: Shows ghost piece preview (transparent piece at drop position)", 60, backY + 60);
+        // Instructions
+        g.setFont(new Font("Arial", Font.BOLD, 12));
+        g.setColor(new Color(60, 60, 60));
+        int instY = instructY + 25;
+        g.drawString("🎮 Navigation: UP/DOWN (navigate), LEFT/RIGHT (change), ENTER (select)", 70, instY);
+        g.drawString("🔍 Extend Mode: Shows ghost piece preview at drop position", 70, instY + 20);
+        
+        // Back button - centered
+        int backY = instructY + 100;
+        int buttonWidth = 120;
+        int buttonX = (getWidth() - buttonWidth) / 2;
+        drawButton(g, buttonX, backY, buttonWidth, 35, "🏠 Back to Menu", 6 == selectedConfigItem);
+        
+        // Reset antialiasing
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
     }
     
     // Helper methods for drawing UI components
@@ -927,6 +948,7 @@ public class TetrisGame extends JFrame implements KeyListener {
         }
     }
     
+    /*
     private void drawRadioButtons(Graphics2D g, int x, int y, String[] options, int selected, boolean highlighted) {
         int spacing = 70; // Reduced spacing to fit better
         for (int i = 0; i < options.length; i++) {
@@ -950,6 +972,7 @@ public class TetrisGame extends JFrame implements KeyListener {
             g.drawString(options[i], radioX + 20, y + 12);
         }
     }
+    */
     
     private void drawButton(Graphics2D g, int x, int y, int width, int height, String text, boolean selected) {
         // Draw button background
@@ -967,6 +990,7 @@ public class TetrisGame extends JFrame implements KeyListener {
         g.drawString(text, textX, textY);
     }
     
+    /*
     private String getConfigItemText(int index) {
         switch (index) {
             case 0: return "Starting Level: " + startingLevel;
@@ -984,6 +1008,7 @@ public class TetrisGame extends JFrame implements KeyListener {
             default: return "";
         }
     }
+    */
     
     private void drawPlayerSelectionScreen(Graphics2D g) {
         g.setColor(getThemeBackgroundColor());
@@ -1206,7 +1231,6 @@ public class TetrisGame extends JFrame implements KeyListener {
         // Draw player info
         g.setColor(getThemeTextColor());
         g.setFont(new Font("Arial", Font.BOLD, 16));
-        FontMetrics fm = g.getFontMetrics();
         
         int textY = y + 25;
         int lineHeight = 25;
@@ -1479,6 +1503,7 @@ public class TetrisGame extends JFrame implements KeyListener {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
     }
     
+    /*
     private void drawPlayerInfo(Graphics2D g, int x, int y, String name, 
                                int playerScore, int playerLevel, int playerLines, int playerNum) {
         g.setColor(Color.WHITE);
@@ -1489,7 +1514,9 @@ public class TetrisGame extends JFrame implements KeyListener {
         g.drawString("Level: " + playerLevel, x, y + 45);  
         g.drawString("Lines: " + playerLines, x, y + 60);
     }
+    */
     
+    /*
     private void drawGameOverAtPosition(Graphics2D g, int x, int y, int width) {
         g.setColor(new Color(0, 0, 0, 180));
         g.fillRect(x, y - 20, width, 40);
@@ -1500,6 +1527,7 @@ public class TetrisGame extends JFrame implements KeyListener {
         String text = "GAME OVER";
         g.drawString(text, x + (width - fm.stringWidth(text)) / 2, y);
     }
+    */
     
     private void drawMultiplayerWinner(Graphics2D g) {
         // Draw semi-transparent overlay
@@ -1637,80 +1665,119 @@ public class TetrisGame extends JFrame implements KeyListener {
     }
     
     private void drawNextPiece(Graphics2D g) {
-        int startX = BOARD_WIDTH * BLOCK_SIZE + 30;
-        int startY = 100;
-        
-        g.setColor(Color.BLACK);
-        g.setFont(new Font("Arial", Font.BOLD, 16));
-        g.drawString("Next:", startX, startY - 10);
-        
-        int[][] piece = PIECES[nextPiece];
-        g.setColor(COLORS[nextPiece % COLORS.length]);
-        
-        for (int py = 0; py < piece.length; py++) {
-            for (int px = 0; px < piece[py].length; px++) {
-                if (piece[py][px] == 1) {
-                    g.fillRect(startX + px * 20, startY + py * 20, 20, 20);
-                    g.setColor(Color.BLACK);
-                    g.drawRect(startX + px * 20, startY + py * 20, 20, 20);
-                    g.setColor(COLORS[nextPiece % COLORS.length]);
-                }
-            }
-        }
+        // This method is now integrated into drawUI() for better layout
+        // Keeping empty to avoid breaking references
     }
     
     private void drawUI(Graphics2D g) {
-        int startX = BOARD_WIDTH * BLOCK_SIZE + 30;
-        int startY = 200;
+        // Enhanced single player UI layout for large window
+        int boardEndX = BOARD_WIDTH * BLOCK_SIZE + 20;
+        int rightPanelX = boardEndX + 20;
+        int rightPanelWidth = getWidth() - rightPanelX - 20;
         
+        // Main game stats panel with background
+        g.setColor(new Color(240, 240, 240, 200));
+        g.fillRoundRect(rightPanelX, 50, rightPanelWidth, 120, 15, 15);
         g.setColor(Color.BLACK);
+        g.drawRoundRect(rightPanelX, 50, rightPanelWidth, 120, 15, 15);
+        
+        // Game statistics
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.BOLD, 20));
+        g.drawString("GAME STATS", rightPanelX + 10, 75);
+        
         g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("Score: " + String.format("%,d", score), rightPanelX + 10, 105);
+        g.drawString("Level: " + level, rightPanelX + 10, 125);
+        g.drawString("Lines: " + linesCleared, rightPanelX + 10, 145);
         
-        g.drawString("Score: " + score, startX, startY);
-        g.drawString("Level: " + level, startX, startY + 25);
-        g.drawString("Lines: " + linesCleared, startX, startY + 50);
+        // Next piece preview panel
+        int nextPieceY = 190;
+        g.setColor(new Color(240, 240, 240, 200));
+        g.fillRoundRect(rightPanelX, nextPieceY, rightPanelWidth, 100, 15, 15);
+        g.setColor(Color.BLACK);
+        g.drawRoundRect(rightPanelX, nextPieceY, rightPanelWidth, 100, 15, 15);
         
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("NEXT PIECE", rightPanelX + 10, nextPieceY + 25);
+        
+        // Draw next piece preview (centered in panel)
+        if (showNextPiece) {
+            int[][] piece = PIECES[nextPiece];
+            Color pieceColor = COLORS[nextPiece % COLORS.length];
+            
+            int previewX = rightPanelX + rightPanelWidth/2 - 40;
+            int previewY = nextPieceY + 40;
+            
+            g.setColor(pieceColor);
+            for (int py = 0; py < piece.length; py++) {
+                for (int px = 0; px < piece[py].length; px++) {
+                    if (piece[py][px] == 1) {
+                        g.fillRect(previewX + px * 20, previewY + py * 20, 20, 20);
+                        g.setColor(Color.BLACK);
+                        g.drawRect(previewX + px * 20, previewY + py * 20, 20, 20);
+                        g.setColor(pieceColor);
+                    }
+                }
+            }
+        }
+        
+        // Controls panel
+        int controlsY = nextPieceY + 120;
+        int controlsHeight = 160;
+        g.setColor(new Color(240, 240, 240, 200));
+        g.fillRoundRect(rightPanelX, controlsY, rightPanelWidth, controlsHeight, 15, 15);
+        g.setColor(Color.BLACK);
+        g.drawRoundRect(rightPanelX, controlsY, rightPanelWidth, controlsHeight, 15, 15);
+        
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("CONTROLS", rightPanelX + 10, controlsY + 25);
+        
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        g.drawString("🎮 Movement: WASD", rightPanelX + 10, controlsY + 50);
+        g.drawString("⬇️ Hard Drop: SPACE", rightPanelX + 10, controlsY + 70);
+        g.drawString("⏸️ Pause: P", rightPanelX + 10, controlsY + 90);
+        g.drawString("🎵 Music: M", rightPanelX + 10, controlsY + 110);
+        g.drawString("🏠 Menu: ESC", rightPanelX + 10, controlsY + 130);
+        
+        // Status panel
+        int statusY = controlsY + controlsHeight + 20;
+        g.setColor(new Color(240, 240, 240, 200));
+        g.fillRoundRect(rightPanelX, statusY, rightPanelWidth, 80, 15, 15);
+        g.setColor(Color.BLACK);
+        g.drawRoundRect(rightPanelX, statusY, rightPanelWidth, 80, 15, 15);
+        
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.drawString("STATUS", rightPanelX + 10, statusY + 25);
+        
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        g.setColor(soundEnabled ? new Color(0, 150, 0) : Color.RED);
+        g.drawString("🔊 Sound: " + (soundEnabled ? "ON" : "OFF"), rightPanelX + 10, statusY + 45);
+        g.setColor(musicEnabled ? new Color(0, 150, 0) : Color.RED);
+        g.drawString("🎵 Music: " + (musicEnabled ? "ON" : "OFF"), rightPanelX + 10, statusY + 65);
+        
+        // Game state overlays
         if (paused) {
-            g.drawString("PAUSED", startX, startY + 100);
+            g.setColor(new Color(0, 0, 0, 150));
+            g.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
+            g.setColor(Color.YELLOW);
+            g.setFont(new Font("Arial", Font.BOLD, 36));
+            FontMetrics fm = g.getFontMetrics();
+            String pauseText = "PAUSED";
+            int pauseX = (BOARD_WIDTH * BLOCK_SIZE - fm.stringWidth(pauseText)) / 2;
+            g.drawString(pauseText, pauseX, BOARD_HEIGHT * BLOCK_SIZE / 2);
         }
         
         if (gameOver) {
-            g.setFont(new Font("Arial", Font.BOLD, 24));
+            g.setColor(new Color(0, 0, 0, 150));
+            g.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
             g.setColor(Color.RED);
-            g.drawString("GAME OVER", 50, BOARD_HEIGHT * BLOCK_SIZE / 2 + 50);
+            g.setFont(new Font("Arial", Font.BOLD, 36));
+            FontMetrics fm = g.getFontMetrics();
+            String gameOverText = "GAME OVER";
+            int gameOverX = (BOARD_WIDTH * BLOCK_SIZE - fm.stringWidth(gameOverText)) / 2;
+            g.drawString(gameOverText, gameOverX, BOARD_HEIGHT * BLOCK_SIZE / 2);
         }
-        
-        // Controls section - organize in columns
-        g.setColor(Color.BLACK);
-        g.setFont(new Font("Arial", Font.BOLD, 14));
-        g.drawString("CONTROLS", startX, startY + 150);
-        
-        g.setFont(new Font("Arial", Font.PLAIN, 12));
-        int col1X = startX;
-        int col2X = startX + 160;
-        
-        // Column 1 - Basic Controls
-        g.drawString("Basic Controls:", col1X, startY + 175);
-        g.drawString("Move: ,/. or A/D", col1X, startY + 195);
-        g.drawString("Down: Space/↓", col1X, startY + 215);
-        g.drawString("Rotate: L or W/↑", col1X, startY + 235);
-        g.drawString("Pause: P", col1X, startY + 255);
-        
-        // Column 2 - Special Controls  
-        g.drawString("Special Controls:", col2X, startY + 175);
-        g.drawString("Sound: Ctrl+S", col2X, startY + 195);
-        g.drawString("Music: M", col2X, startY + 215);
-        g.drawString("Center Window: Ctrl+C", col2X, startY + 235);
-        g.drawString("Reset Window: Ctrl+R", col2X, startY + 255);
-        g.drawString("ESC: Home Menu", col2X, startY + 275);
-        
-        // Sound/Music status
-        g.setFont(new Font("Arial", Font.BOLD, 12));
-        g.setColor(new Color(0, 100, 0)); // Dark green
-        g.drawString("STATUS", startX, startY + 305);
-        g.setFont(new Font("Arial", Font.PLAIN, 12));
-        g.drawString("Sound: " + (soundEnabled ? "ON" : "OFF"), startX, startY + 325);
-        g.drawString("Music: " + (musicEnabled ? "ON" : "OFF"), startX, startY + 345);
     }
     
     // Key controls
@@ -1745,9 +1812,11 @@ public class TetrisGame extends JFrame implements KeyListener {
                         player2Name = "";
                         player1Type = 0;
                         player2Type = 0;
-                    } else if (selectedMenuItem == 2) { // Settings
+                    } else if (selectedMenuItem == 2) { // Highscore
+                        showHighscoreScreen();
+                    } else if (selectedMenuItem == 3) { // Settings
                         showConfigScreen();
-                    } else if (selectedMenuItem == 3) { // Exit
+                    } else if (selectedMenuItem == 4) { // Exit
                         System.exit(0);
                     }
                     break;
@@ -1777,6 +1846,18 @@ public class TetrisGame extends JFrame implements KeyListener {
                     }
                     break;
                 case KeyEvent.VK_ESCAPE:
+                    returnToHomeScreen();
+                    break;
+            }
+            repaint();
+            return;
+        }
+        
+        // Handle highscore screen navigation
+        if (showHighscoreScreen) {
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_ESCAPE:
+                case KeyEvent.VK_ENTER:
                     returnToHomeScreen();
                     break;
             }
@@ -1844,7 +1925,7 @@ public class TetrisGame extends JFrame implements KeyListener {
                     }
                     // Start multiplayer game (placeholder for now)
                     isMultiplayerMode = true;
-                    adjustWindowSize(); // Dynamic resize for multiplayer
+                    // Keep consistent large window size
                     showNameEntry = false;
                     startMultiplayerGame(); // Will be replaced with startMultiplayerGame later
                 }
@@ -2117,7 +2198,7 @@ public class TetrisGame extends JFrame implements KeyListener {
         player1Type = 0; // Force Human player for single player mode
         player2Type = 0; // Reset player 2 type as well
         
-        adjustWindowSize(); // Resize to single player
+        // Keep consistent window size - no resize needed
         initializeGame();
         fallSpeed = 500;
         if (gameTimer != null) {
@@ -2139,11 +2220,8 @@ public class TetrisGame extends JFrame implements KeyListener {
         showHomeScreen = false;
         initializeMultiplayerGame();
         
-        // Resize window for multiplayer
-        int multiWidth = (2 * BOARD_WIDTH * BLOCK_SIZE) + (2 * 160) + 100; // 100 for spacing
-        int multiHeight = BOARD_HEIGHT * BLOCK_SIZE + 150; // Extra height for title and panels
-        setSize(multiWidth, multiHeight);
-        setLocationRelativeTo(null);
+        // Keep consistent large window size - no resize needed
+        centerWindow(); // Just center, don't resize
         
         fallSpeed = 500;
         if (gameTimer != null) {
@@ -2164,6 +2242,7 @@ public class TetrisGame extends JFrame implements KeyListener {
     private void returnToHomeScreen() {
         showHomeScreen = true;
         showConfigScreen = false;
+        showHighscoreScreen = false;
         showPlayerSelection = false;
         showNameEntry = false;
         isMultiplayerMode = false;
@@ -2180,8 +2259,8 @@ public class TetrisGame extends JFrame implements KeyListener {
         }
         selectedMenuItem = 0; // Reset to "Play Game"
         
-        // Resize window with proper size calculation
-        adjustWindowSize();
+        // Keep consistent large window size
+        centerWindow(); // Just center, don't resize
         
         // Start menu music
         if (musicEnabled && soundManager != null) {
@@ -2192,11 +2271,20 @@ public class TetrisGame extends JFrame implements KeyListener {
         repaint();
     }
     
+    private void showHighscoreScreen() {
+        showHomeScreen = false;
+        showHighscoreScreen = true;
+        showConfigScreen = false;
+        showPlayerSelection = false;
+        showNameEntry = false;
+        repaint();
+    }
+    
     private void showConfigScreen() {
         showHomeScreen = false;
         showConfigScreen = true;
         selectedConfigItem = 0;
-        adjustWindowSize(); // Resize for config screen
+        // Keep consistent large window size
         repaint();
     }
     
@@ -2613,7 +2701,7 @@ public class TetrisGame extends JFrame implements KeyListener {
                             double score = evaluateBoard(testBoard);
                             if (score > bestScore) {
                                 bestScore = score;
-                                bestMove = new AIMove(x, y, rotation, score);
+                                bestMove = new AIMove(x, rotation);
                             }
                         }
                     }
@@ -2737,14 +2825,11 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     // AI Move class to store move information
     private class AIMove {
-        int x, y, rotation;
-        double score;
+        int x, rotation;
         
-        public AIMove(int x, int y, int rotation, double score) {
+        public AIMove(int x, int rotation) {
             this.x = x;
-            this.y = y;
             this.rotation = rotation;
-            this.score = score;
         }
     }
     
@@ -2794,30 +2879,132 @@ public class TetrisGame extends JFrame implements KeyListener {
     }
     
     private Dimension calculateOptimalWindowSize() {
-        if (showConfigScreen) {
-            // Config screen needs more space
-            return new Dimension(700, 600);
-        } else if (isMultiplayerMode) {
-            // For multiplayer: 2 boards + 2 info panels + spacing
-            int multiWidth = (2 * BOARD_WIDTH * BLOCK_SIZE) + (2 * 160) + 100; // 100 for spacing
-            int multiHeight = BOARD_HEIGHT * BLOCK_SIZE + 150; // Extra height for title and panels
-            return new Dimension(multiWidth, multiHeight);
-        } else {
-            // Single player/menu size
-            int singleWidth = Math.max(BOARD_WIDTH * BLOCK_SIZE + 200, 500);
-            int singleHeight = Math.max(BOARD_HEIGHT * BLOCK_SIZE + 100, 600);
-            return new Dimension(singleWidth, singleHeight);
-        }
+        // Always use large window size for consistent UI experience
+        // Calculate the largest possible size needed for multiplayer mode
+        int multiWidth = (2 * BOARD_WIDTH * BLOCK_SIZE) + (2 * 160) + 100; // ~820px
+        int multiHeight = BOARD_HEIGHT * BLOCK_SIZE + 200; // ~800px (extra height for UI)
+        
+        // Use the large size for all modes to maintain consistency
+        int fixedWidth = Math.max(multiWidth, 850);  // Minimum 850px width
+        int fixedHeight = Math.max(multiHeight, 800); // Minimum 800px height
+        
+        return new Dimension(fixedWidth, fixedHeight);
     }
     
     private void centerWindow() {
         setLocationRelativeTo(null); // Center on screen
     }
     
+    private void drawHighscoreScreen(Graphics2D g) {
+        // Set background
+        g.setColor(getThemeBackgroundColor());
+        g.fillRect(0, 0, getWidth(), getHeight());
+        
+        // Apply modern styling
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        
+        // Title
+        g.setColor(getThemeTextColor());
+        g.setFont(new Font("Arial", Font.BOLD, 36));
+        FontMetrics titleFm = g.getFontMetrics();
+        String title = "🏆 HIGH SCORES";
+        int titleX = (getWidth() - titleFm.stringWidth(title)) / 2;
+        g.drawString(title, titleX, 80);
+        
+        // Subtitle
+        g.setFont(new Font("Arial", Font.ITALIC, 16));
+        FontMetrics subtitleFm = g.getFontMetrics();
+        String subtitle = "Single Player Mode";
+        int subtitleX = (getWidth() - subtitleFm.stringWidth(subtitle)) / 2;
+        g.setColor(new Color(100, 100, 100));
+        g.drawString(subtitle, subtitleX, 110);
+        
+        // Load and display high scores
+        java.util.List<GameData.HighScore> highScores = GameData.loadHighScores();
+        
+        if (highScores == null || highScores.isEmpty()) {
+            // No high scores found
+            g.setColor(getThemeTextColor());
+            g.setFont(new Font("Arial", Font.BOLD, 18));
+            FontMetrics noScoreFm = g.getFontMetrics();
+            String noScoreText = "No high scores yet!";
+            String playText = "Play some games to set records!";
+            
+            int noScoreX = (getWidth() - noScoreFm.stringWidth(noScoreText)) / 2;
+            int playX = (getWidth() - noScoreFm.stringWidth(playText)) / 2;
+            
+            g.drawString(noScoreText, noScoreX, 200);
+            g.setFont(new Font("Arial", Font.PLAIN, 14));
+            g.setColor(new Color(120, 120, 120));
+            g.drawString(playText, playX, 230);
+        } else {
+            // Display high scores table
+            g.setFont(new Font("Arial", Font.BOLD, 16));
+            g.setColor(getThemeTextColor());
+            
+            // Table headers
+            int startY = 160;
+            int lineHeight = 35;
+            
+            g.drawString("RANK", 100, startY);
+            g.drawString("SCORE", 200, startY);
+            g.drawString("LEVEL", 320, startY);
+            g.drawString("LINES", 420, startY);
+            g.drawString("DATE", 520, startY);
+            
+            // Draw separator line
+            g.setColor(new Color(100, 100, 100));
+            g.drawLine(80, startY + 10, getWidth() - 80, startY + 10);
+            
+            // Display top 10 scores
+            g.setFont(new Font("Arial", Font.PLAIN, 14));
+            for (int i = 0; i < Math.min(10, highScores.size()); i++) {
+                GameData.HighScore score = highScores.get(i);
+                int y = startY + 30 + (i * lineHeight);
+                
+                // Highlight top 3
+                if (i < 3) {
+                    Color[] medalColors = {
+                        new Color(255, 215, 0),   // Gold
+                        new Color(192, 192, 192), // Silver  
+                        new Color(205, 127, 50)   // Bronze
+                    };
+                    g.setColor(medalColors[i]);
+                    g.setFont(new Font("Arial", Font.BOLD, 14));
+                } else {
+                    g.setColor(getThemeTextColor());
+                    g.setFont(new Font("Arial", Font.PLAIN, 14));
+                }
+                
+                // Medal symbols for top 3
+                String rank = (i < 3) ? 
+                    new String[]{"🥇", "🥈", "🥉"}[i] + " #" + (i + 1) :
+                    "#" + (i + 1);
+                
+                g.drawString(rank, 100, y);
+                g.drawString(String.format("%,d", score.score), 200, y);
+                g.drawString(String.valueOf(score.level), 320, y);
+                g.drawString(String.valueOf(score.lines), 420, y);
+                g.drawString(score.date, 520, y);
+            }
+        }
+        
+        // Instructions
+        g.setColor(new Color(100, 100, 100));
+        g.setFont(new Font("Arial", Font.ITALIC, 12));
+        FontMetrics instructFm = g.getFontMetrics();
+        String instruction = "Press ESCAPE or ENTER to return to menu";
+        int instructX = (getWidth() - instructFm.stringWidth(instruction)) / 2;
+        g.drawString(instruction, instructX, getHeight() - 50);
+        
+        // Reset antialiasing
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+    }
+    
     private void resetToDefaultSize() {
-        // Reset to single player mode size as default
-        isMultiplayerMode = false;
-        adjustWindowSize();
-        showMessage("🏠 Window reset to default size and centered!");
+        // Just center the window, maintain consistent large size
+        centerWindow();
+        showMessage("🏠 Window centered!");
     }
 }
