@@ -294,58 +294,52 @@ public class TetrisGame extends JFrame implements KeyListener {
     private void multiplayerGameStep() {
         if (showHomeScreen || showConfigScreen || paused) return;
         if (gameOver && gameOver2) return;
-        
+
         // Player 1 step
         if (!gameOver) {
             // AI move for player 1 if AI is selected
-            if (player1Type == 1 && aiPlayer1 != null) { // AI player
+            if (player1Type == 1 && aiPlayer1 != null) {
                 aiPlayer1.makeMove();
             }
-            
+
             if (canMove(currentX, currentY + 1, currentRotation)) {
                 currentY++;
             } else {
                 placePiece();
                 clearLines();
-                
-                // Check if AI Player 1 reached win score
-                if (player1Type == 1 && score >= aiWinScore) { // AI reached target points
-                    gameOver = true;
-                    gameOver2 = true; // End both games
-                    gameTimer.stop();
-                    showMultiplayerAIWinDialog(1);
+
+                // One unified win check (human or AI)
+                if (score >= aiWinScore) {
+                    endMultiplayerOnScoreWin(1, player1Type == 1);
                     return;
                 }
-                
+
                 spawnNextPiece();
                 if (!canMove(currentX, currentY, currentRotation)) {
                     gameOver = true;
                 }
             }
         }
-        
+
         // Player 2 step
         if (!gameOver2) {
             // AI move for player 2 if AI is selected
-            if (player2Type == 1 && aiPlayer2 != null) { // AI player
+            if (player2Type == 1 && aiPlayer2 != null) {
                 aiPlayer2.makeMove();
             }
-            
+
             if (canMove2(currentX2, currentY2 + 1, currentRotation2)) {
                 currentY2++;
             } else {
                 placePiece2();
                 clearLines2();
-                
-                // Check if AI Player 2 reached win score
-                if (player2Type == 1 && score2 >= aiWinScore) { // AI reached target points
-                    gameOver = true;
-                    gameOver2 = true; // End both games
-                    gameTimer.stop();
-                    showMultiplayerAIWinDialog(2);
+
+                // One unified win check (human or AI)
+                if (score2 >= aiWinScore) {
+                    endMultiplayerOnScoreWin(2, player2Type == 1);
                     return;
                 }
-                
+
                 spawnNextPiece2();
                 if (!canMove2(currentX2, currentY2, currentRotation2)) {
                     gameOver2 = true;
@@ -1365,6 +1359,57 @@ public class TetrisGame extends JFrame implements KeyListener {
         }
         return true;
     }
+
+    // Try to rotate with simple left/right kicks. Works for both players.
+    private boolean tryRotateWithKick(boolean isPlayer2) {
+        int curRot = isPlayer2 ? currentRotation2 : currentRotation;
+        int newRot = (curRot + 1) % 4;
+        int x      = isPlayer2 ? currentX2 : currentX;
+        int y      = isPlayer2 ? currentY2 : currentY;
+        int pieceIndex = isPlayer2 ? currentPiece2 : currentPiece;
+
+        // If it already works in place, do it.
+        boolean can = isPlayer2 ? canMove2(x, y, newRot) : canMove(x, y, newRot);
+        if (can) {
+            if (isPlayer2) currentRotation2 = newRot; else currentRotation = newRot;
+            return true;
+        }
+
+        // We'll try a range of kicks and auto-clamp them to the board if needed.
+        int[][] rotated = rotatePiece(PIECES[pieceIndex], newRot);
+        int pieceW = rotated[0].length;
+
+        // Try offsets in a sensible order: small left, small right, then bigger.
+        int[] baseKicks = { -1, +1, -2, +2, -3, +3 };
+
+        // Keep track to avoid retrying the same dx after clamping
+        java.util.HashSet<Integer> tried = new java.util.HashSet<>();
+
+        for (int baseDx : baseKicks) {
+            int dx = baseDx;
+
+            // Clamp against left wall
+            if (x + dx < 0) {
+                dx = -x; // shift just enough to stay inside
+            }
+            // Clamp against right wall
+            if (x + dx + pieceW > BOARD_WIDTH) {
+                dx = BOARD_WIDTH - pieceW - x; // pull left just enough
+            }
+
+            // Skip duplicates created by clamping
+            if (!tried.add(dx)) continue;
+
+            can = isPlayer2 ? canMove2(x + dx, y, newRot) : canMove(x + dx, y, newRot);
+            if (can) {
+                if (isPlayer2) { currentX2 += dx; currentRotation2 = newRot; }
+                else           { currentX  += dx; currentRotation  = newRot; }
+                return true;
+            }
+        }
+
+        return false; // still blocked
+    }
     
     private void drawBoardAtPosition(Graphics2D g, int offsetX, int offsetY, int[][] gameBoard, boolean isPlayer2) {
         // Enable antialiasing for smoother rendering
@@ -2014,12 +2059,8 @@ public class TetrisGame extends JFrame implements KeyListener {
                 }
                 break;
             case KeyEvent.VK_W:
-                if (!gameOver) {
-                    int newRotation = (currentRotation + 1) % 4;
-                    if (canMove(currentX, currentY, newRotation)) {
-                        currentRotation = newRotation;
-                        playSound("rotate");
-                    }
+                if (!gameOver && tryRotateWithKick(false)) {
+                    playSound("rotate");
                 }
                 break;
                 
@@ -2102,9 +2143,7 @@ public class TetrisGame extends JFrame implements KeyListener {
                 }
                 break;
             case KeyEvent.VK_W:
-                int newRotation = (currentRotation + 1) % 4;
-                if (canMove(currentX, currentY, newRotation)) {
-                    currentRotation = newRotation;
+                if (tryRotateWithKick(false)) {
                     playSound("rotate");
                 }
                 break;
@@ -2427,6 +2466,60 @@ public class TetrisGame extends JFrame implements KeyListener {
     private void showMessage(String message) {
         // Just print to console for debugging
         System.out.println(message);
+    }
+
+    private void showMultiplayerPlayerWinDialog(int playerNum) {
+        playSound("gameOver");
+
+        String winnerName = (playerNum == 1) ? player1Name : player2Name;
+        int winnerScore   = (playerNum == 1) ? score : score2;
+        int winnerLevel   = (playerNum == 1) ? level : level2;
+        int winnerLines   = (playerNum == 1) ? linesCleared : linesCleared2;
+
+        String message =
+                "🎉 " + winnerName + " WINS! 🎉\n\n" +
+                        "Reached " + aiWinScore + " points first.\n\n" +
+                        "Final Scores:\n" +
+                        player1Name + " (P1): " + score  + " points\n" +
+                        player2Name + " (P2): " + score2 + " points\n\n" +
+                        "Winner Stats:\n" +
+                        "Score: " + winnerScore + "\n" +
+                        "Level: " + winnerLevel + "\n" +
+                        "Lines: " + winnerLines + "\n\n" +
+                        "What would you like to do?";
+
+        int result = JOptionPane.showOptionDialog(
+                this, message, "Victory!",
+                JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                null,
+                new String[]{"Play Again", "Main Menu", "Exit"},
+                "Play Again"
+        );
+
+        switch (result) {
+            case 0: restartMultiplayerGame(); break;
+            case 1: returnToHomeScreen();     break;
+            default: System.exit(0);          break;
+        }
+    }
+
+    // Ends multiplayer immediately when someone hits the target score.
+    // Forces a repaint so the UI shows the final score (e.g., 500) before the dialog.
+    private void endMultiplayerOnScoreWin(int winnerNum, boolean isAI) {
+        gameOver  = true;
+        gameOver2 = true;
+
+        // Make sure the last score update is visible
+        repaint();
+
+        if (gameTimer != null) gameTimer.stop();
+
+        if (isAI) {
+            showMultiplayerAIWinDialog(winnerNum);
+        } else {
+            showMultiplayerPlayerWinDialog(winnerNum);
+        }
     }
     
     // Save/Load Configuration functionality
