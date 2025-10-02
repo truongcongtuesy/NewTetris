@@ -6,7 +6,6 @@ import java.util.*;
 @SuppressWarnings("unused")
 public class TetrisGame extends JFrame implements KeyListener {
     // Game configuration
-    private static final boolean MULTIPLAYER = false; // Set to true for 2-player mode
     
     // Sound and music settings
     private static boolean soundEnabled = true;
@@ -82,8 +81,8 @@ public class TetrisGame extends JFrame implements KeyListener {
     private boolean showHomeScreen = false;
     private boolean showConfigScreen = false;
     private boolean showHighscoreScreen = false;
-    private int selectedMenuItem = 0; // 0 = Play Game, 1 = Multiplayer, 2 = Highscore, 3 = Settings, 4 = Exit
-    private final String[] menuItems = {"Play Game", "Multiplayer", "Highscore", "Settings", "Exit"};
+    private int selectedMenuItem = 0; // 0 = New Game, 1 = Load Game, 2 = Multiplayer, 3 = Highscore, 4 = Settings, 5 = Exit
+    private final String[] menuItems = {"New Game", "Load Game", "Multiplayer", "Highscore", "Settings", "Exit"};
     
     // Config screen state
     private int selectedConfigItem = 0;
@@ -97,8 +96,13 @@ public class TetrisGame extends JFrame implements KeyListener {
     private static boolean showGhostPiece = true;
     private static boolean showNextPiece = true;
     private static String gameTheme = "Classic";
-    // private static final String[] themes = {"Classic", "Dark", "Colorful"}; // Unused for now
     private static int aiWinScore = AI_WIN_SCORE; // Configurable AI win score
+    
+    // Save/Load Game system
+    private static boolean showLoadGameScreen = false;
+    private static int selectedSaveSlot = 0;
+    private static final int MAX_SAVE_SLOTS = 3;
+    private static boolean[] saveSlotExists = new boolean[MAX_SAVE_SLOTS];
     
     // Multiplayer system
     private static boolean isMultiplayerMode = false;
@@ -140,6 +144,9 @@ public class TetrisGame extends JFrame implements KeyListener {
         
         // Load saved configuration
         loadConfiguration();
+        
+        // Initialize save slots
+        checkSaveSlots();
         
         // Initialize game
         initializeGame();
@@ -606,6 +613,8 @@ public class TetrisGame extends JFrame implements KeyListener {
             drawSplashScreen(offGraphics);
         } else if (showHomeScreen) {
             drawHomeScreen(offGraphics);
+        } else if (showLoadGameScreen) {
+            drawLoadGameScreen(offGraphics);
         } else if (showConfigScreen) {
             drawConfigScreen(offGraphics);
         } else if (showHighscoreScreen) {
@@ -765,14 +774,17 @@ public class TetrisGame extends JFrame implements KeyListener {
         fm = g.getFontMetrics();
         
         for (int i = 0; i < menuItems.length; i++) {
+            // Check if Load Game should be disabled
+            boolean isLoadDisabled = (i == 1) && !hasAnySaveFiles();
+            
             // Highlight selected item
             if (i == selectedMenuItem) {
-                g.setColor(Color.YELLOW);
+                g.setColor(isLoadDisabled ? Color.GRAY : Color.YELLOW);
                 g.drawString("> " + menuItems[i] + " <", 
                            (getWidth() - fm.stringWidth("> " + menuItems[i] + " <")) / 2, 
                            280 + i * 60);
             } else {
-                g.setColor(Color.WHITE);
+                g.setColor(isLoadDisabled ? Color.DARK_GRAY : Color.WHITE);
                 g.drawString(menuItems[i], 
                            (getWidth() - fm.stringWidth(menuItems[i])) / 2, 
                            280 + i * 60);
@@ -948,32 +960,6 @@ public class TetrisGame extends JFrame implements KeyListener {
         }
     }
     
-    /*
-    private void drawRadioButtons(Graphics2D g, int x, int y, String[] options, int selected, boolean highlighted) {
-        int spacing = 70; // Reduced spacing to fit better
-        for (int i = 0; i < options.length; i++) {
-            int radioX = x + i * spacing;
-            
-            // Draw radio button circle
-            g.setColor(highlighted ? new Color(100, 150, 255) : Color.WHITE);
-            g.fillOval(radioX, y, 16, 16);
-            g.setColor(Color.BLACK); // Strong black border
-            g.drawOval(radioX, y, 16, 16);
-            
-            // Fill if selected
-            if (i == selected) {
-                g.setColor(new Color(50, 100, 200)); // Darker blue for better visibility
-                g.fillOval(radioX + 4, y + 4, 8, 8);
-            }
-            
-            // Draw label
-            g.setColor(Color.BLACK); // Strong black text
-            g.setFont(new Font("Arial", Font.BOLD, 12)); // Bold font
-            g.drawString(options[i], radioX + 20, y + 12);
-        }
-    }
-    */
-    
     private void drawButton(Graphics2D g, int x, int y, int width, int height, String text, boolean selected) {
         // Draw button background
         g.setColor(selected ? new Color(100, 150, 255) : new Color(220, 220, 220));
@@ -989,26 +975,6 @@ public class TetrisGame extends JFrame implements KeyListener {
         int textY = y + (height + fm.getAscent()) / 2 - 2;
         g.drawString(text, textX, textY);
     }
-    
-    /*
-    private String getConfigItemText(int index) {
-        switch (index) {
-            case 0: return "Starting Level: " + startingLevel;
-            case 1: return "Ghost Piece: " + (showGhostPiece ? "ON" : "OFF");
-            case 2: return "Next Piece: " + (showNextPiece ? "ON" : "OFF");
-            case 3: return "Sound Effects: " + (soundEnabled ? "ON" : "OFF");
-            case 4: return "Background Music: " + (musicEnabled ? "ON" : "OFF");
-            case 5: return "Theme: " + gameTheme;
-            case 6: return "💾 Save Config";
-            case 7: return "📁 Load Config";
-            case 8: return "🏆 View High Scores";
-            case 9: return "🗑️ Reset Data";
-            case 10: return "🖼️ Reset Window";
-            case 11: return "🏠 Back to Menu";
-            default: return "";
-        }
-    }
-    */
     
     private void drawPlayerSelectionScreen(Graphics2D g) {
         g.setColor(getThemeBackgroundColor());
@@ -1503,7 +1469,6 @@ public class TetrisGame extends JFrame implements KeyListener {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
     }
     
-    /*
     private void drawPlayerInfo(Graphics2D g, int x, int y, String name, 
                                int playerScore, int playerLevel, int playerLines, int playerNum) {
         g.setColor(Color.WHITE);
@@ -1514,20 +1479,6 @@ public class TetrisGame extends JFrame implements KeyListener {
         g.drawString("Level: " + playerLevel, x, y + 45);  
         g.drawString("Lines: " + playerLines, x, y + 60);
     }
-    */
-    
-    /*
-    private void drawGameOverAtPosition(Graphics2D g, int x, int y, int width) {
-        g.setColor(new Color(0, 0, 0, 180));
-        g.fillRect(x, y - 20, width, 40);
-        
-        g.setColor(Color.RED);
-        g.setFont(new Font("Arial", Font.BOLD, 16));
-        FontMetrics fm = g.getFontMetrics();
-        String text = "GAME OVER";
-        g.drawString(text, x + (width - fm.stringWidth(text)) / 2, y);
-    }
-    */
     
     private void drawMultiplayerWinner(Graphics2D g) {
         // Draw semi-transparent overlay
@@ -1801,9 +1752,13 @@ public class TetrisGame extends JFrame implements KeyListener {
                     selectedMenuItem = (selectedMenuItem + 1) % menuItems.length;
                     break;
                 case KeyEvent.VK_ENTER:
-                    if (selectedMenuItem == 0) { // Play Game
+                    if (selectedMenuItem == 0) { // New Game
                         startGame();
-                    } else if (selectedMenuItem == 1) { // Multiplayer
+                    } else if (selectedMenuItem == 1) { // Load Game
+                        if (hasAnySaveFiles()) {
+                            showLoadGameScreen();
+                        }
+                    } else if (selectedMenuItem == 2) { // Multiplayer
                         showPlayerSelection = true;
                         showHomeScreen = false;
                         playerSelectionIndex = 0;
@@ -1812,16 +1767,22 @@ public class TetrisGame extends JFrame implements KeyListener {
                         player2Name = "";
                         player1Type = 0;
                         player2Type = 0;
-                    } else if (selectedMenuItem == 2) { // Highscore
+                    } else if (selectedMenuItem == 3) { // Highscore
                         showHighscoreScreen();
-                    } else if (selectedMenuItem == 3) { // Settings
+                    } else if (selectedMenuItem == 4) { // Settings
                         showConfigScreen();
-                    } else if (selectedMenuItem == 4) { // Exit
+                    } else if (selectedMenuItem == 5) { // Exit
                         System.exit(0);
                     }
                     break;
             }
             repaint();
+            return;
+        }
+        
+        // Handle load game screen navigation
+        if (showLoadGameScreen) {
+            handleLoadGameInput(e);
             return;
         }
         
@@ -2158,16 +2119,20 @@ public class TetrisGame extends JFrame implements KeyListener {
             // Game controls
             case KeyEvent.VK_ESCAPE:
                 if (!gameOver) {
-                    int result = JOptionPane.showConfirmDialog(
-                            this,
-                            "Quit current game and return to menu?",
-                            "Confirm Quit",
-                            JOptionPane.YES_NO_OPTION,
-                            JOptionPane.QUESTION_MESSAGE
-                    );
-                    if (result == JOptionPane.YES_OPTION) {
+                    // Ask if player wants to save before quitting
+                    String[] options = {"Save & Quit", "Quit without Saving", "Cancel"};
+                    int choice = JOptionPane.showOptionDialog(this,
+                        "Would you like to save your current game before returning to menu?",
+                        "Save Game?", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
+                        null, options, options[0]);
+                    
+                    if (choice == 0) { // Save & Quit
+                        saveCurrentGame();
+                        returnToHomeScreen();
+                    } else if (choice == 1) { // Quit without Saving
                         returnToHomeScreen();
                     }
+                    // If choice == 2 (Cancel), do nothing - continue playing
                 } else {
                     returnToHomeScreen();
                 }
@@ -2847,24 +2812,9 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            // No look and feel setting - use default
-            
-            if (MULTIPLAYER) {
-                // Create two game windows for multiplayer
-                TetrisGame game1 = new TetrisGame();
-                game1.setTitle("Tetris - Player 1");
-                game1.setLocation(100, 100);
-                game1.setVisible(true);
-                
-                TetrisGame game2 = new TetrisGame();
-                game2.setTitle("Tetris - Player 2");
-                game2.setLocation(500, 100);
-                game2.setVisible(true);
-            } else {
-                // Single player mode
-                TetrisGame game = new TetrisGame();
-                game.setVisible(true);
-            }
+            // Create single game window with multiplayer support built-in
+            TetrisGame game = new TetrisGame();
+            game.setVisible(true);
         });
     }
     
@@ -3006,5 +2956,253 @@ public class TetrisGame extends JFrame implements KeyListener {
         // Just center the window, maintain consistent large size
         centerWindow();
         showMessage("🏠 Window centered!");
+    }
+    
+    // Save/Load Game System Methods
+    private void checkSaveSlots() {
+        for (int i = 0; i < MAX_SAVE_SLOTS; i++) {
+            saveSlotExists[i] = GameData.saveSlotExists(i);
+        }
+    }
+    
+    private boolean hasAnySaveFiles() {
+        for (boolean exists : saveSlotExists) {
+            if (exists) return true;
+        }
+        return false;
+    }
+    
+    private void showLoadGameScreen() {
+        showLoadGameScreen = true;
+        showHomeScreen = false;
+        selectedSaveSlot = 0;
+        checkSaveSlots(); // Refresh save slot status
+    }
+    
+    private void drawLoadGameScreen(Graphics2D g) {
+        // Clear background
+        g.setColor(new Color(240, 240, 240));
+        g.fillRect(0, 0, getWidth(), getHeight());
+        
+        // Apply modern styling
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        
+        // Draw title
+        g.setColor(new Color(70, 130, 180));
+        g.fillRoundRect(50, 20, getWidth() - 100, 60, 15, 15);
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 28));
+        FontMetrics fm = g.getFontMetrics();
+        String title = "📁 Load Game";
+        int titleX = (getWidth() - fm.stringWidth(title)) / 2;
+        g.drawString(title, titleX, 55);
+        
+        // Draw save slots
+        int startY = 140;
+        int slotHeight = 120;
+        int slotWidth = getWidth() - 120;
+        
+        for (int i = 0; i < MAX_SAVE_SLOTS; i++) {
+            int slotY = startY + i * (slotHeight + 20);
+            
+            // Slot background
+            if (i == selectedSaveSlot) {
+                g.setColor(new Color(100, 150, 255, 180));
+            } else {
+                g.setColor(new Color(255, 255, 255, 220));
+            }
+            g.fillRoundRect(60, slotY, slotWidth, slotHeight, 15, 15);
+            
+            // Slot border
+            g.setColor(i == selectedSaveSlot ? new Color(70, 130, 180) : new Color(100, 100, 100));
+            g.setStroke(new BasicStroke(i == selectedSaveSlot ? 3 : 1));
+            g.drawRoundRect(60, slotY, slotWidth, slotHeight, 15, 15);
+            g.setStroke(new BasicStroke(1));
+            
+            // Slot content
+            g.setColor(Color.BLACK);
+            g.setFont(new Font("Arial", Font.BOLD, 18));
+            g.drawString("Slot " + (i + 1), 80, slotY + 30);
+            
+            if (saveSlotExists[i]) {
+                // Load save info to display
+                GameData.GameSave save = GameData.loadGame(i);
+                if (save != null) {
+                    g.setFont(new Font("Arial", Font.PLAIN, 14));
+                    g.drawString("Player: " + save.playerName, 80, slotY + 55);
+                    g.drawString("Score: " + String.format("%,d", save.score), 80, slotY + 75);
+                    g.drawString("Level: " + save.level + " | Lines: " + save.linesCleared, 80, slotY + 95);
+                    g.setColor(new Color(100, 100, 100));
+                    g.setFont(new Font("Arial", Font.ITALIC, 12));
+                    g.drawString("Saved: " + save.saveDate, 320, slotY + 55);
+                }
+            } else {
+                g.setColor(new Color(150, 150, 150));
+                g.setFont(new Font("Arial", Font.ITALIC, 16));
+                g.drawString("Empty Save", 80, slotY + 75);
+            }
+        }
+        
+        // Instructions
+        int instructY = startY + MAX_SAVE_SLOTS * (slotHeight + 20) + 20;
+        g.setColor(new Color(245, 245, 245));
+        g.fillRoundRect(50, instructY, getWidth() - 100, 80, 15, 15);
+        g.setColor(new Color(100, 100, 100));
+        g.drawRoundRect(50, instructY, getWidth() - 100, 80, 15, 15);
+        
+        g.setFont(new Font("Arial", Font.BOLD, 12));
+        g.setColor(new Color(60, 60, 60));
+        g.drawString("🎮 UP/DOWN: Select slot | ENTER: Load game | DELETE: Delete save | ESC: Back", 70, instructY + 30);
+        g.drawString("💡 Only saved games can be loaded", 70, instructY + 50);
+        
+        // Reset antialiasing
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+    }
+    
+    private void handleLoadGameInput(KeyEvent e) {
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_UP:
+                selectedSaveSlot = (selectedSaveSlot - 1 + MAX_SAVE_SLOTS) % MAX_SAVE_SLOTS;
+                break;
+            case KeyEvent.VK_DOWN:
+                selectedSaveSlot = (selectedSaveSlot + 1) % MAX_SAVE_SLOTS;
+                break;
+            case KeyEvent.VK_ENTER:
+                if (saveSlotExists[selectedSaveSlot]) {
+                    loadGameFromSlot(selectedSaveSlot);
+                }
+                break;
+            case KeyEvent.VK_DELETE:
+                if (saveSlotExists[selectedSaveSlot]) {
+                    deleteGameSave(selectedSaveSlot);
+                }
+                break;
+            case KeyEvent.VK_ESCAPE:
+                showLoadGameScreen = false;
+                showHomeScreen = true;
+                break;
+        }
+        repaint();
+    }
+    
+    private void loadGameFromSlot(int slot) {
+        GameData.GameSave save = GameData.loadGame(slot);
+        if (save != null) {
+            // Restore game state
+            board = save.board;
+            currentPiece = save.currentPiece;
+            currentX = save.currentX;
+            currentY = save.currentY;
+            currentRotation = save.currentRotation;
+            nextPiece = save.nextPiece;
+            score = save.score;
+            level = save.level;
+            linesCleared = save.linesCleared;
+            paused = save.paused;
+            gameOver = false;
+            
+            // Start game
+            showLoadGameScreen = false;
+            isMultiplayerMode = false;
+            
+            // Start game timer
+            if (gameTimer != null) {
+                gameTimer.stop();
+            }
+            gameTimer = new javax.swing.Timer(Math.max(50, 500 - (level - 1) * 50), e -> gameStep());
+            gameTimer.start();
+            
+            // Play background music
+            if (musicEnabled && soundManager != null) {
+                soundManager.playBackgroundMusic("background", musicVolume);
+            }
+            
+            JOptionPane.showMessageDialog(this,
+                "Game loaded successfully!\n\nWelcome back, " + save.playerName + "!",
+                "Load Complete", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                "Failed to load game from slot " + (slot + 1) + ".\nSave file may be corrupted.",
+                "Load Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void deleteGameSave(int slot) {
+        int result = JOptionPane.showConfirmDialog(this,
+            "Are you sure you want to delete save slot " + (slot + 1) + "?\nThis action cannot be undone.",
+            "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        
+        if (result == JOptionPane.YES_OPTION) {
+            if (GameData.deleteSaveSlot(slot)) {
+                saveSlotExists[slot] = false;
+                JOptionPane.showMessageDialog(this,
+                    "Save slot " + (slot + 1) + " deleted successfully!",
+                    "Delete Complete", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                    "Failed to delete save slot " + (slot + 1) + ".",
+                    "Delete Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+    
+    private void saveCurrentGame() {
+        // Find an empty slot or ask user to choose
+        int emptySlot = -1;
+        for (int i = 0; i < MAX_SAVE_SLOTS; i++) {
+            if (!saveSlotExists[i]) {
+                emptySlot = i;
+                break;
+            }
+        }
+        
+        if (emptySlot == -1) {
+            // All slots full, ask user which to overwrite
+            String[] options = new String[MAX_SAVE_SLOTS];
+            for (int i = 0; i < MAX_SAVE_SLOTS; i++) {
+                options[i] = "Slot " + (i + 1);
+            }
+            
+            String choice = (String) JOptionPane.showInputDialog(this,
+                "All save slots are full. Which slot would you like to overwrite?",
+                "Choose Save Slot", JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+            
+            if (choice != null) {
+                for (int i = 0; i < options.length; i++) {
+                    if (options[i].equals(choice)) {
+                        emptySlot = i;
+                        break;
+                    }
+                }
+            } else {
+                return; // User cancelled
+            }
+        }
+        
+        // Save game
+        String playerName = JOptionPane.showInputDialog(this, 
+            "Enter your name for this save:", 
+            "Save Game", JOptionPane.QUESTION_MESSAGE);
+        
+        if (playerName == null || playerName.trim().isEmpty()) {
+            playerName = "Player";
+        }
+        
+        GameData.GameSave save = new GameData.GameSave(
+            board, currentPiece, currentX, currentY, currentRotation,
+            nextPiece, score, level, linesCleared, paused, playerName.trim()
+        );
+        
+        if (GameData.saveGame(save, emptySlot)) {
+            saveSlotExists[emptySlot] = true;
+            JOptionPane.showMessageDialog(this,
+                "Game saved successfully to slot " + (emptySlot + 1) + "!\n\nYou can continue playing or return to menu.",
+                "Save Complete", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                "Failed to save game. Please try again.",
+                "Save Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

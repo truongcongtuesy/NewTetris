@@ -9,6 +9,46 @@ import java.text.SimpleDateFormat;
 public class GameData {
     private static final String CONFIG_FILE = "tetris_config.json";
     private static final String SCORES_FILE = "tetris_scores.json";
+    private static final String SAVE_FILE_PREFIX = "tetris_save_slot_";
+    private static final String SAVE_FILE_SUFFIX = ".json";
+    
+    // Game save data
+    public static class GameSave {
+        public int[][] board;
+        public int currentPiece;
+        public int currentX;
+        public int currentY;
+        public int currentRotation;
+        public int nextPiece;
+        public int score;
+        public int level;
+        public int linesCleared;
+        public boolean paused;
+        public String saveDate;
+        public String playerName;
+        
+        public GameSave() {}
+        
+        public GameSave(int[][] board, int currentPiece, int currentX, int currentY, 
+                       int currentRotation, int nextPiece, int score, int level, 
+                       int linesCleared, boolean paused, String playerName) {
+            this.board = new int[board.length][];
+            for (int i = 0; i < board.length; i++) {
+                this.board[i] = board[i].clone();
+            }
+            this.currentPiece = currentPiece;
+            this.currentX = currentX;
+            this.currentY = currentY;
+            this.currentRotation = currentRotation;
+            this.nextPiece = nextPiece;
+            this.score = score;
+            this.level = level;
+            this.linesCleared = linesCleared;
+            this.paused = paused;
+            this.playerName = playerName;
+            this.saveDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        }
+    }
     
     // Configuration data
     public static class Config {
@@ -280,5 +320,122 @@ public class GameData {
     
     public static boolean deleteScores() {
         return new File(SCORES_FILE).delete();
+    }
+    
+    /**
+     * Save game state to specified slot
+     */
+    public static boolean saveGame(GameSave gameSave, int slot) {
+        String fileName = SAVE_FILE_PREFIX + slot + SAVE_FILE_SUFFIX;
+        try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
+            writer.println("{");
+            writer.println("  \"playerName\": \"" + gameSave.playerName + "\",");
+            writer.println("  \"score\": " + gameSave.score + ",");
+            writer.println("  \"level\": " + gameSave.level + ",");
+            writer.println("  \"linesCleared\": " + gameSave.linesCleared + ",");
+            writer.println("  \"currentPiece\": " + gameSave.currentPiece + ",");
+            writer.println("  \"currentX\": " + gameSave.currentX + ",");
+            writer.println("  \"currentY\": " + gameSave.currentY + ",");
+            writer.println("  \"currentRotation\": " + gameSave.currentRotation + ",");
+            writer.println("  \"nextPiece\": " + gameSave.nextPiece + ",");
+            writer.println("  \"paused\": " + gameSave.paused + ",");
+            writer.println("  \"saveDate\": \"" + gameSave.saveDate + "\",");
+            
+            // Save board state
+            writer.println("  \"board\": [");
+            for (int i = 0; i < gameSave.board.length; i++) {
+                writer.print("    [");
+                for (int j = 0; j < gameSave.board[i].length; j++) {
+                    writer.print(gameSave.board[i][j]);
+                    if (j < gameSave.board[i].length - 1) writer.print(", ");
+                }
+                writer.print("]");
+                if (i < gameSave.board.length - 1) writer.println(",");
+                else writer.println();
+            }
+            writer.println("  ]");
+            writer.println("}");
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error saving game to slot " + slot + ": " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Load game state from specified slot
+     */
+    public static GameSave loadGame(int slot) {
+        String fileName = SAVE_FILE_PREFIX + slot + SAVE_FILE_SUFFIX;
+        GameSave gameSave = new GameSave();
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
+            String line;
+            boolean inBoard = false;
+            int boardRow = 0;
+            gameSave.board = new int[20][10]; // Default board size
+            
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                
+                if (line.contains("\"board\"")) {
+                    inBoard = true;
+                    continue;
+                } else if (inBoard && line.equals("]")) {
+                    inBoard = false;
+                    continue;
+                } else if (inBoard && line.startsWith("[")) {
+                    // Parse board row
+                    String rowData = line.replaceAll("[\\[\\],]", "").trim();
+                    String[] values = rowData.split("\\s+");
+                    for (int j = 0; j < values.length && j < 10; j++) {
+                        gameSave.board[boardRow][j] = Integer.parseInt(values[j]);
+                    }
+                    boardRow++;
+                } else if (line.contains("playerName")) {
+                    gameSave.playerName = extractStringValue(line);
+                } else if (line.contains("score")) {
+                    gameSave.score = extractIntValue(line);
+                } else if (line.contains("level")) {
+                    gameSave.level = extractIntValue(line);
+                } else if (line.contains("linesCleared")) {
+                    gameSave.linesCleared = extractIntValue(line);
+                } else if (line.contains("currentPiece")) {
+                    gameSave.currentPiece = extractIntValue(line);
+                } else if (line.contains("currentX")) {
+                    gameSave.currentX = extractIntValue(line);
+                } else if (line.contains("currentY")) {
+                    gameSave.currentY = extractIntValue(line);
+                } else if (line.contains("currentRotation")) {
+                    gameSave.currentRotation = extractIntValue(line);
+                } else if (line.contains("nextPiece")) {
+                    gameSave.nextPiece = extractIntValue(line);
+                } else if (line.contains("paused")) {
+                    gameSave.paused = extractBooleanValue(line);
+                } else if (line.contains("saveDate")) {
+                    gameSave.saveDate = extractStringValue(line);
+                }
+            }
+            return gameSave;
+        } catch (IOException e) {
+            System.err.println("Error loading game from slot " + slot + ": " + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Check if save slot exists
+     */
+    public static boolean saveSlotExists(int slot) {
+        String fileName = SAVE_FILE_PREFIX + slot + SAVE_FILE_SUFFIX;
+        return new File(fileName).exists();
+    }
+    
+    /**
+     * Delete save slot
+     */
+    public static boolean deleteSaveSlot(int slot) {
+        String fileName = SAVE_FILE_PREFIX + slot + SAVE_FILE_SUFFIX;
+        return new File(fileName).delete();
     }
 }
