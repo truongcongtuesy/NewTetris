@@ -1275,24 +1275,24 @@ public class TetrisGame extends JFrame implements KeyListener {
             if (playerNum == 1) {
                 g.drawString("Player 1 Controls:", x + 10, textY);
                 textY += 15;
-                g.drawString("A/←: Left", x + 10, textY);
+                g.drawString("A: Left", x + 10, textY);
                 textY += 12;
-                g.drawString("D/→: Right", x + 10, textY);
+                g.drawString("D: Right", x + 10, textY);
                 textY += 12;
-                g.drawString("S/↓: Down", x + 10, textY);
+                g.drawString("S: Down", x + 10, textY);
                 textY += 12;
-                g.drawString("W/↑: Rotate", x + 10, textY);
+                g.drawString("W: Rotate", x + 10, textY);
                 textY += 15; // Extra spacing
             } else {
                 g.drawString("Player 2 Controls:", x + 10, textY);
                 textY += 15;
-                g.drawString("J: Left", x + 10, textY);
+                g.drawString("←: Left", x + 10, textY);
                 textY += 12;
-                g.drawString("L: Right", x + 10, textY);
+                g.drawString("→: Right", x + 10, textY);
                 textY += 12;
-                g.drawString("K: Down", x + 10, textY);
+                g.drawString("↓: Down", x + 10, textY);
                 textY += 12;
-                g.drawString("I: Rotate", x + 10, textY);
+                g.drawString("↑: Rotate", x + 10, textY);
                 textY += 15; // Extra spacing
             }
         }
@@ -1893,59 +1893,8 @@ public class TetrisGame extends JFrame implements KeyListener {
             handleSinglePlayerControls(e);
         }
         
-        repaint();
-        
+        // Global game controls (music, pause, etc.)
         switch (e.getKeyCode()) {
-            // Single Player Controls
-            case KeyEvent.VK_COMMA:      // Move left (,)
-            case KeyEvent.VK_A:
-            case KeyEvent.VK_LEFT:
-                if (canMove(currentX - 1, currentY, currentRotation)) {
-                    currentX--;
-                    playSound("move");
-                }
-                break;
-            case KeyEvent.VK_PERIOD:     // Move right (.)
-            case KeyEvent.VK_D:
-            case KeyEvent.VK_RIGHT:
-                if (canMove(currentX + 1, currentY, currentRotation)) {
-                    currentX++;
-                    playSound("move");
-                }
-                break;
-            case KeyEvent.VK_SPACE:      // Move down (Space)
-            case KeyEvent.VK_DOWN:
-                if (canMove(currentX, currentY + 1, currentRotation)) {
-                    currentY++;
-                    score++;
-                } else {
-                    // Hard drop with Space
-                    if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-                        while (canMove(currentX, currentY + 1, currentRotation)) {
-                            currentY++;
-                            score += 2;
-                        }
-                    }
-                }
-                playSound("drop");
-                break;
-            case KeyEvent.VK_L:          // Rotate (L)
-            case KeyEvent.VK_W:
-            case KeyEvent.VK_UP:
-                int newRotation = (currentRotation + 1) % 4;
-                if (canMove(currentX, currentY, newRotation)) {
-                    currentRotation = newRotation;
-                    playSound("rotate");
-                }
-                break;
-            
-            // Additional Controls
-            case KeyEvent.VK_S:          // Toggle Sound
-                if (e.isControlDown()) { // Ctrl+S to avoid conflict with soft drop
-                    soundEnabled = !soundEnabled;
-                    showMessage("Sound: " + (soundEnabled ? "ON" : "OFF"));
-                }
-                break;
             case KeyEvent.VK_M:          // Toggle Music
                 musicEnabled = !musicEnabled;
                 if (soundManager != null) {
@@ -1986,40 +1935,6 @@ public class TetrisGame extends JFrame implements KeyListener {
                     }
                 }
                 break;
-            case KeyEvent.VK_R:          // Restart
-                restartGame();
-                break;
-            case KeyEvent.VK_ESCAPE:     // Return to Home Screen
-                if (!gameOver && !showHomeScreen) {
-                    // In-game, ask for confirmation before quitting
-                    int result = JOptionPane.showConfirmDialog(
-                            this,
-                            "Quit current game and return to the menu?",
-                            "Confirm Quit",
-                            JOptionPane.YES_NO_OPTION,
-                            JOptionPane.QUESTION_MESSAGE
-                    );
-                    if (result == JOptionPane.YES_OPTION) {
-                        returnToHomeScreen();
-                    }
-                } else {
-                    // If game over or already in home screen, just return directly
-                    returnToHomeScreen();
-                }
-                break;
-        }
-        
-        // Global shortcuts (work in any state)
-        if (e.isControlDown()) {
-            switch (e.getKeyCode()) {
-                case KeyEvent.VK_C: // Ctrl+C: Center window
-                    centerWindow();
-                    showMessage("🎯 Window centered!");
-                    break;
-                case KeyEvent.VK_R: // Ctrl+R: Reset window size
-                    resetToDefaultSize();
-                    break;
-            }
         }
         
         repaint();
@@ -2036,23 +1951,20 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     private void handleMultiplayerControls(KeyEvent e) {
         switch (e.getKeyCode()) {
-            // Player 1 Controls (WASD + Arrow Keys)
+            // Player 1 Controls (WASD only)
             case KeyEvent.VK_A:
-            case KeyEvent.VK_LEFT:
                 if (!gameOver && canMove(currentX - 1, currentY, currentRotation)) {
                     currentX--;
                     playSound("move");
                 }
                 break;
             case KeyEvent.VK_D:
-            case KeyEvent.VK_RIGHT:
                 if (!gameOver && canMove(currentX + 1, currentY, currentRotation)) {
                     currentX++;
                     playSound("move");
                 }
                 break;
             case KeyEvent.VK_S:
-            case KeyEvent.VK_DOWN:
                 if (!gameOver && canMove(currentX, currentY + 1, currentRotation)) {
                     currentY++;
                     score += 1;
@@ -2060,7 +1972,6 @@ public class TetrisGame extends JFrame implements KeyListener {
                 }
                 break;
             case KeyEvent.VK_W:
-            case KeyEvent.VK_UP:
                 if (!gameOver) {
                     int newRotation = (currentRotation + 1) % 4;
                     if (canMove(currentX, currentY, newRotation)) {
@@ -2070,27 +1981,27 @@ public class TetrisGame extends JFrame implements KeyListener {
                 }
                 break;
                 
-            // Player 2 Controls (IJKL)
-            case KeyEvent.VK_J:
+            // Player 2 Controls (Arrow Keys)
+            case KeyEvent.VK_LEFT:
                 if (!gameOver2 && canMove2(currentX2 - 1, currentY2, currentRotation2)) {
                     currentX2--;
                     playSound("move");
                 }
                 break;
-            case KeyEvent.VK_L:
+            case KeyEvent.VK_RIGHT:
                 if (!gameOver2 && canMove2(currentX2 + 1, currentY2, currentRotation2)) {
                     currentX2++;
                     playSound("move");
                 }
                 break;
-            case KeyEvent.VK_K:
+            case KeyEvent.VK_DOWN:
                 if (!gameOver2 && canMove2(currentX2, currentY2 + 1, currentRotation2)) {
                     currentY2++;
                     score2 += 1;
                     playSound("move");
                 }
                 break;
-            case KeyEvent.VK_I:
+            case KeyEvent.VK_UP:
                 if (!gameOver2) {
                     int newRotation2 = (currentRotation2 + 1) % 4;
                     if (canMove2(currentX2, currentY2, newRotation2)) {
@@ -2128,35 +2039,27 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     private void handleSinglePlayerControls(KeyEvent e) {
         switch (e.getKeyCode()) {
-            // Movement controls
-            case KeyEvent.VK_COMMA:      // Move left (,)
+            // Movement controls (WASD only)
             case KeyEvent.VK_A:
-            case KeyEvent.VK_LEFT:
                 if (canMove(currentX - 1, currentY, currentRotation)) {
                     currentX--;
                     playSound("move");
                 }
                 break;
-            case KeyEvent.VK_PERIOD:     // Move right (.)
             case KeyEvent.VK_D:
-            case KeyEvent.VK_RIGHT:
                 if (canMove(currentX + 1, currentY, currentRotation)) {
                     currentX++;
                     playSound("move");
                 }
                 break;
-            case KeyEvent.VK_K:          // Soft drop (K)
             case KeyEvent.VK_S:
-            case KeyEvent.VK_DOWN:
                 if (canMove(currentX, currentY + 1, currentRotation)) {
                     currentY++;
                     score += 1;
                     playSound("move");
                 }
                 break;
-            case KeyEvent.VK_L:          // Rotate (L)
             case KeyEvent.VK_W:
-            case KeyEvent.VK_UP:
                 int newRotation = (currentRotation + 1) % 4;
                 if (canMove(currentX, currentY, newRotation)) {
                     currentRotation = newRotation;
@@ -2209,6 +2112,11 @@ public class TetrisGame extends JFrame implements KeyListener {
     private void startGame() {
         showHomeScreen = false;
         isMultiplayerMode = false; // Ensure single player mode
+        
+        // Reset player types for single player (always Human)
+        player1Type = 0; // Force Human player for single player mode
+        player2Type = 0; // Reset player 2 type as well
+        
         adjustWindowSize(); // Resize to single player
         initializeGame();
         fallSpeed = 500;
@@ -2262,6 +2170,11 @@ public class TetrisGame extends JFrame implements KeyListener {
         gameOver = false;
         gameOver2 = false;
         paused = false;
+        
+        // Reset player types to default (Human)
+        player1Type = 0; // Human
+        player2Type = 0; // Human
+        
         if (gameTimer != null) {
             gameTimer.stop();
         }
