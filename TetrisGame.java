@@ -81,8 +81,8 @@ public class TetrisGame extends JFrame implements KeyListener {
     private boolean showHomeScreen = false;
     private boolean showConfigScreen = false;
     private boolean showHighscoreScreen = false;
-    private int selectedMenuItem = 0; // 0 = New Game, 1 = Load Game, 2 = Multiplayer, 3 = Highscore, 4 = Settings, 5 = Exit
-    private final String[] menuItems = {"New Game", "Load Game", "Multiplayer", "Highscore", "Settings", "Exit"};
+    private int selectedMenuItem = 0; // 0 = New Game, 1 = Load Game, 2 = Multiplayer, 3 = Online Mode, 4 = Highscore, 5 = Settings, 6 = Exit
+    private final String[] menuItems = {"New Game", "Load Game", "Multiplayer", "Online Mode", "Highscore", "Settings", "Exit"};
     
     // Config screen state
     private int selectedConfigItem = 0;
@@ -103,6 +103,14 @@ public class TetrisGame extends JFrame implements KeyListener {
     private static int selectedSaveSlot = 0;
     private static final int MAX_SAVE_SLOTS = 3;
     private static boolean[] saveSlotExists = new boolean[MAX_SAVE_SLOTS];
+    
+    // Online mode system
+    private static boolean isOnlineMode = false;
+    private static boolean showOnlineSetup = false;
+    private TetrisServer tetrisServer;
+    private boolean serverConnected = false;
+    private long lastServerMoveTime = 0;
+    private int serverMoveDelay = 500; // Delay between server requests
     
     // Multiplayer system
     private static boolean isMultiplayerMode = false;
@@ -192,6 +200,9 @@ public class TetrisGame extends JFrame implements KeyListener {
         // Initialize AI players
         aiPlayer1 = new AIPlayer(1);
         aiPlayer2 = new AIPlayer(2);
+        
+        // Initialize TetrisServer for online mode
+        tetrisServer = new TetrisServer();
     }
     
     private void initializeGame() {
@@ -635,8 +646,12 @@ public class TetrisGame extends JFrame implements KeyListener {
                     }
                 }
                 
-                // Draw UI only for single player
-                drawUI(offGraphics);
+                // Draw UI for single player and online mode
+                if (isOnlineMode) {
+                    drawOnlineUI(offGraphics);
+                } else {
+                    drawUI(offGraphics);
+                }
             }
         }
         
@@ -1776,6 +1791,128 @@ public class TetrisGame extends JFrame implements KeyListener {
         }
     }
     
+    private void drawOnlineUI(Graphics2D g) {
+        // Enhanced online mode UI layout
+        int boardEndX = BOARD_WIDTH * BLOCK_SIZE + 20;
+        int rightPanelX = boardEndX + 20;
+        int rightPanelWidth = getWidth() - rightPanelX - 20;
+        
+        // Online Mode indicator panel
+        g.setColor(new Color(70, 130, 180, 200));
+        g.fillRoundRect(rightPanelX, 50, rightPanelWidth, 60, 15, 15);
+        g.setColor(Color.WHITE);
+        g.drawRoundRect(rightPanelX, 50, rightPanelWidth, 60, 15, 15);
+        
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 18));
+        g.drawString("🌐 ONLINE MODE", rightPanelX + 10, 75);
+        
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        String status = serverConnected ? "✅ Connected to TetrisServer" : "❌ Disconnected";
+        g.setColor(serverConnected ? Color.GREEN : Color.RED);
+        g.drawString(status, rightPanelX + 10, 95);
+        
+        // Main game stats panel
+        g.setColor(new Color(240, 240, 240, 200));
+        g.fillRoundRect(rightPanelX, 130, rightPanelWidth, 120, 15, 15);
+        g.setColor(Color.BLACK);
+        g.drawRoundRect(rightPanelX, 130, rightPanelWidth, 120, 15, 15);
+        
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.BOLD, 20));
+        g.drawString("GAME STATS", rightPanelX + 10, 155);
+        
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("Score: " + String.format("%,d", score), rightPanelX + 10, 185);
+        g.drawString("Level: " + level, rightPanelX + 10, 205);
+        g.drawString("Lines: " + linesCleared, rightPanelX + 10, 225);
+        
+        // Next piece preview panel
+        int nextPieceY = 270;
+        g.setColor(new Color(240, 240, 240, 200));
+        g.fillRoundRect(rightPanelX, nextPieceY, rightPanelWidth, 100, 15, 15);
+        g.setColor(Color.BLACK);
+        g.drawRoundRect(rightPanelX, nextPieceY, rightPanelWidth, 100, 15, 15);
+        
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("NEXT PIECE", rightPanelX + 10, nextPieceY + 25);
+        
+        // Draw next piece preview
+        if (showNextPiece) {
+            int[][] piece = PIECES[nextPiece];
+            Color pieceColor = COLORS[nextPiece % COLORS.length];
+            
+            int previewX = rightPanelX + rightPanelWidth/2 - 40;
+            int previewY = nextPieceY + 40;
+            
+            g.setColor(pieceColor);
+            for (int py = 0; py < piece.length; py++) {
+                for (int px = 0; px < piece[py].length; px++) {
+                    if (piece[py][px] == 1) {
+                        g.fillRect(previewX + px * 20, previewY + py * 20, 20, 20);
+                        g.setColor(Color.BLACK);
+                        g.drawRect(previewX + px * 20, previewY + py * 20, 20, 20);
+                        g.setColor(pieceColor);
+                    }
+                }
+            }
+        }
+        
+        // Server assistance panel
+        int serverY = nextPieceY + 120;
+        g.setColor(new Color(255, 255, 220, 200));
+        g.fillRoundRect(rightPanelX, serverY, rightPanelWidth, 100, 15, 15);
+        g.setColor(Color.BLACK);
+        g.drawRoundRect(rightPanelX, serverY, rightPanelWidth, 100, 15, 15);
+        
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("🤖 AI ASSISTANCE", rightPanelX + 10, serverY + 25);
+        
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        g.drawString("Server provides optimal moves", rightPanelX + 10, serverY + 50);
+        g.drawString("Delay: " + serverMoveDelay + "ms", rightPanelX + 10, serverY + 70);
+        
+        // Controls panel
+        int controlsY = serverY + 120;
+        int controlsHeight = 120;
+        g.setColor(new Color(240, 240, 240, 200));
+        g.fillRoundRect(rightPanelX, controlsY, rightPanelWidth, controlsHeight, 15, 15);
+        g.setColor(Color.BLACK);
+        g.drawRoundRect(rightPanelX, controlsY, rightPanelWidth, controlsHeight, 15, 15);
+        
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("CONTROLS", rightPanelX + 10, controlsY + 25);
+        
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        g.drawString("🎮 Movement: WASD", rightPanelX + 10, controlsY + 50);
+        g.drawString("⏸️ Pause: P", rightPanelX + 10, controlsY + 70);
+        g.drawString("🎵 Music: M", rightPanelX + 10, controlsY + 90);
+        g.drawString("🔌 Disconnect: ESC", rightPanelX + 10, controlsY + 110);
+        
+        // Game state overlays
+        if (paused) {
+            g.setColor(new Color(0, 0, 0, 150));
+            g.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
+            g.setColor(Color.YELLOW);
+            g.setFont(new Font("Arial", Font.BOLD, 36));
+            FontMetrics fm = g.getFontMetrics();
+            String pauseText = "PAUSED";
+            int pauseX = (BOARD_WIDTH * BLOCK_SIZE - fm.stringWidth(pauseText)) / 2;
+            g.drawString(pauseText, pauseX, BOARD_HEIGHT * BLOCK_SIZE / 2);
+        }
+        
+        if (gameOver) {
+            g.setColor(new Color(0, 0, 0, 150));
+            g.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
+            g.setColor(Color.RED);
+            g.setFont(new Font("Arial", Font.BOLD, 36));
+            FontMetrics fm = g.getFontMetrics();
+            String gameOverText = "GAME OVER";
+            int gameOverX = (BOARD_WIDTH * BLOCK_SIZE - fm.stringWidth(gameOverText)) / 2;
+            g.drawString(gameOverText, gameOverX, BOARD_HEIGHT * BLOCK_SIZE / 2);
+        }
+    }
+    
     // Key controls
     @Override
     public void keyPressed(KeyEvent e) {
@@ -1812,11 +1949,13 @@ public class TetrisGame extends JFrame implements KeyListener {
                         player2Name = "";
                         player1Type = 0;
                         player2Type = 0;
-                    } else if (selectedMenuItem == 3) { // Highscore
+                    } else if (selectedMenuItem == 3) { // Online Mode
+                        startOnlineMode();
+                    } else if (selectedMenuItem == 4) { // Highscore
                         showHighscoreScreen();
-                    } else if (selectedMenuItem == 4) { // Settings
+                    } else if (selectedMenuItem == 5) { // Settings
                         showConfigScreen();
-                    } else if (selectedMenuItem == 5) { // Exit
+                    } else if (selectedMenuItem == 6) { // Exit
                         System.exit(0);
                     }
                     break;
@@ -2158,20 +2297,34 @@ public class TetrisGame extends JFrame implements KeyListener {
             // Game controls
             case KeyEvent.VK_ESCAPE:
                 if (!gameOver) {
-                    // Ask if player wants to save before quitting
-                    String[] options = {"Save & Quit", "Quit without Saving", "Cancel"};
-                    int choice = JOptionPane.showOptionDialog(this,
-                        "Would you like to save your current game before returning to menu?",
-                        "Save Game?", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
-                        null, options, options[0]);
-                    
-                    if (choice == 0) { // Save & Quit
-                        saveCurrentGame();
-                        returnToHomeScreen();
-                    } else if (choice == 1) { // Quit without Saving
-                        returnToHomeScreen();
+                    if (isOnlineMode) {
+                        // Online mode - ask if user wants to disconnect
+                        int result = JOptionPane.showConfirmDialog(this,
+                            "Disconnect from TetrisServer and return to menu?",
+                            "Disconnect", JOptionPane.YES_NO_OPTION);
+                        if (result == JOptionPane.YES_OPTION) {
+                            if (serverConnected) {
+                                tetrisServer.disconnect();
+                                serverConnected = false;
+                            }
+                            returnToHomeScreen();
+                        }
+                    } else {
+                        // Regular single player - ask if player wants to save
+                        String[] options = {"Save & Quit", "Quit without Saving", "Cancel"};
+                        int choice = JOptionPane.showOptionDialog(this,
+                            "Would you like to save your current game before returning to menu?",
+                            "Save Game?", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
+                            null, options, options[0]);
+                        
+                        if (choice == 0) { // Save & Quit
+                            saveCurrentGame();
+                            returnToHomeScreen();
+                        } else if (choice == 1) { // Quit without Saving
+                            returnToHomeScreen();
+                        }
+                        // If choice == 2 (Cancel), do nothing - continue playing
                     }
-                    // If choice == 2 (Cancel), do nothing - continue playing
                 } else {
                     returnToHomeScreen();
                 }
@@ -2243,13 +2396,188 @@ public class TetrisGame extends JFrame implements KeyListener {
         repaint();
     }
     
+    private void startOnlineMode() {
+        // Try to connect to TetrisServer
+        if (tetrisServer.connect()) {
+            serverConnected = true;
+            showHomeScreen = false;
+            isOnlineMode = true;
+            isMultiplayerMode = false;
+            
+            // Initialize game for online mode
+            initializeGame();
+            
+            // Keep consistent large window size
+            centerWindow();
+            
+            fallSpeed = 500;
+            if (gameTimer != null) {
+                gameTimer.stop();
+            }
+            gameTimer = new javax.swing.Timer(fallSpeed, e -> onlineGameStep());
+            gameTimer.start();
+            
+            // Start game background music
+            if (musicEnabled && soundManager != null) {
+                soundManager.stopBackgroundMusic();
+                soundManager.playBackgroundMusic("background", musicVolume);
+            }
+            
+            JOptionPane.showMessageDialog(this,
+                "✅ Connected to TetrisServer!\n\nThe AI server will now help you play optimally.\n\nControls: ESC to quit, P to pause",
+                "Online Mode Started", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                "❌ Failed to connect to TetrisServer!\n\nPlease make sure the server is running on localhost:3000\n\nTry starting the server first, then select Online Mode again.",
+                "Connection Failed", JOptionPane.ERROR_MESSAGE);
+        }
+        
+        repaint();
+    }
+    
+    private void onlineGameStep() {
+        if (showHomeScreen || showConfigScreen || gameOver || paused) return;
+        
+        // Get server recommendation if connected and enough time has passed
+        long currentTime = System.currentTimeMillis();
+        if (serverConnected && currentTime - lastServerMoveTime > serverMoveDelay) {
+            requestServerMove();
+            lastServerMoveTime = currentTime;
+        }
+        
+        // Normal game step
+        if (canMove(currentX, currentY + 1, currentRotation)) {
+            currentY++;
+        } else {
+            // Place piece on board
+            placePiece();
+            
+            // Check for completed lines
+            clearLines();
+            
+            // Spawn next piece
+            spawnNextPiece();
+            
+            // Check game over
+            if (!canMove(currentX, currentY, currentRotation)) {
+                gameOver = true;
+                gameTimer.stop();
+                if (serverConnected) {
+                    tetrisServer.disconnect();
+                    serverConnected = false;
+                }
+                showOnlineGameOverDialog();
+            }
+        }
+        
+        repaint();
+    }
+    
+    private void requestServerMove() {
+        if (!serverConnected) return;
+        
+        try {
+            // Create PurGame object with current game state
+            TetrisServer.PurGame gameState = new TetrisServer.PurGame(
+                BOARD_WIDTH,
+                BOARD_HEIGHT, 
+                board,
+                currentPiece,
+                nextPiece
+            );
+            
+            // Get optimal move from server
+            TetrisServer.OpMove optimalMove = tetrisServer.getOptimalMove(gameState);
+            
+            if (optimalMove != null) {
+                // Apply server's recommendation
+                applyServerMove(optimalMove);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error requesting server move: " + e.getMessage());
+            serverConnected = false;
+        }
+    }
+    
+    private void applyServerMove(TetrisServer.OpMove move) {
+        // Apply optimal rotation
+        int targetRotation = move.opRotate % 4;
+        while (currentRotation != targetRotation) {
+            if (canMove(currentX, currentY, (currentRotation + 1) % 4)) {
+                currentRotation = (currentRotation + 1) % 4;
+            } else {
+                break; // Can't rotate due to collision
+            }
+        }
+        
+        // Move to optimal X position (with boundary checks)
+        int targetX = Math.max(0, Math.min(BOARD_WIDTH - 1, move.opX));
+        
+        if (currentX < targetX) {
+            // Move right
+            while (currentX < targetX && canMove(currentX + 1, currentY, currentRotation)) {
+                currentX++;
+            }
+        } else if (currentX > targetX) {
+            // Move left  
+            while (currentX > targetX && canMove(currentX - 1, currentY, currentRotation)) {
+                currentX--;
+            }
+        }
+        
+        System.out.println("🎯 Applied server move: x=" + currentX + ", rotation=" + currentRotation);
+    }
+    
+    private void showOnlineGameOverDialog() {
+        playSound("gameOver");
+        
+        // Record the score
+        addCurrentScore("Online Mode", "Server-Assisted");
+        
+        int result = JOptionPane.showOptionDialog(
+            this,
+            "🌐 Online Game Over!\n\nScore: " + score + "\nLevel: " + level + "\nLines: " + linesCleared + 
+            "\n\n✅ Score saved to high scores!\n\nWhat would you like to do?",
+            "Online Game Over",
+            JOptionPane.YES_NO_CANCEL_OPTION,
+            JOptionPane.INFORMATION_MESSAGE,
+            null,
+            new String[]{"Play Again", "Main Menu", "Exit"},
+            "Play Again"
+        );
+        
+        switch (result) {
+            case 0: // Play Again
+                startOnlineMode();
+                break;
+            case 1: // Main Menu
+                if (serverConnected) {
+                    tetrisServer.disconnect();
+                    serverConnected = false;
+                }
+                returnToHomeScreen();
+                break;
+            case 2: // Exit
+            default:
+                System.exit(0);
+                break;
+        }
+    }
+    
     private void returnToHomeScreen() {
+        // Disconnect from server if connected
+        if (serverConnected) {
+            tetrisServer.disconnect();
+            serverConnected = false;
+        }
+        
         showHomeScreen = true;
         showConfigScreen = false;
         showHighscoreScreen = false;
         showPlayerSelection = false;
         showNameEntry = false;
         isMultiplayerMode = false;
+        isOnlineMode = false;
         gameOver = false;
         gameOver2 = false;
         paused = false;
