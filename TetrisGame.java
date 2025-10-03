@@ -93,7 +93,7 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     // Configuration settings
     private static int startingLevel = 1;
-    private static boolean showGhostPiece = true;
+    private static boolean showGhostPiece = true;   
     private static boolean showNextPiece = true;
     private static String gameTheme = "Classic";
     private static int aiWinScore = AI_WIN_SCORE; // Configurable AI win score
