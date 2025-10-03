@@ -12,8 +12,8 @@ public class TetrisGame extends JFrame implements KeyListener {
     private static boolean musicEnabled = true;
     
     // Game dimensions
-    private static final int BOARD_WIDTH = 10;
-    private static final int BOARD_HEIGHT = 20;
+    private static int BOARD_WIDTH = 10;
+    private static int BOARD_HEIGHT = 20;
     private static final int BLOCK_SIZE = 30;
     
     // AI Settings
@@ -259,6 +259,24 @@ public class TetrisGame extends JFrame implements KeyListener {
         gameOver = false;
         gameOver2 = false;
         paused = false;
+    }
+    
+    private void resetGameBoardsWithNewDimensions() {
+        // Recreate boards with new dimensions
+        board = new int[BOARD_HEIGHT][BOARD_WIDTH];
+        board2 = new int[BOARD_HEIGHT][BOARD_WIDTH];
+        
+        // Reset positions to center of new board
+        currentX = BOARD_WIDTH / 2 - 1;
+        currentX2 = BOARD_WIDTH / 2 - 1;
+        currentY = 0;
+        currentY2 = 0;
+        
+        // Update window size to accommodate new board dimensions
+        SwingUtilities.invokeLater(() -> {
+            centerWindow();
+            repaint();
+        });
     }
     
     private void gameStep() {
@@ -2622,9 +2640,19 @@ public class TetrisGame extends JFrame implements KeyListener {
     
     private void changeConfigValue(int direction) {
         switch (selectedConfigItem) {
-            case 0: // Field Width (readonly for now)
+            case 0: // Field Width
+                int newWidth = Math.max(5, Math.min(15, BOARD_WIDTH + direction));
+                if (newWidth != BOARD_WIDTH) {
+                    BOARD_WIDTH = newWidth;
+                    resetGameBoardsWithNewDimensions();
+                }
                 break;
-            case 1: // Field Height (readonly for now)
+            case 1: // Field Height
+                int newHeight = Math.max(15, Math.min(30, BOARD_HEIGHT + direction));
+                if (newHeight != BOARD_HEIGHT) {
+                    BOARD_HEIGHT = newHeight;
+                    resetGameBoardsWithNewDimensions();
+                }
                 break;
             case 2: // Game Level
                 startingLevel = Math.max(1, Math.min(10, startingLevel + direction));
@@ -2854,7 +2882,8 @@ public class TetrisGame extends JFrame implements KeyListener {
     private void saveConfiguration() {
         GameData.Config config = new GameData.Config(
             startingLevel, showGhostPiece, showNextPiece, gameTheme,
-            soundEnabled, musicEnabled, (int)musicVolume, (int)effectsVolume, aiWinScore
+            soundEnabled, musicEnabled, (int)musicVolume, (int)effectsVolume, aiWinScore,
+            BOARD_WIDTH, BOARD_HEIGHT
         );
         
         if (GameData.saveConfig(config)) {
@@ -2883,6 +2912,13 @@ public class TetrisGame extends JFrame implements KeyListener {
         musicVolume = (float)config.musicVolume;
         effectsVolume = (float)config.effectsVolume;
         aiWinScore = config.aiWinScore;
+        
+        // Apply field dimensions if they're different
+        if (BOARD_WIDTH != config.fieldWidth || BOARD_HEIGHT != config.fieldHeight) {
+            BOARD_WIDTH = config.fieldWidth;
+            BOARD_HEIGHT = config.fieldHeight;
+            resetGameBoardsWithNewDimensions();
+        }
         
         // Update sound system with loaded settings
         if (soundManager != null) {

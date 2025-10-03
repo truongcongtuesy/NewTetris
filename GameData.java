@@ -61,12 +61,15 @@ public class GameData {
         public int musicVolume = 70;
         public int effectsVolume = 80;
         public int aiWinScore = 500;
+        public int fieldWidth = 10;  // Field width in cells
+        public int fieldHeight = 20; // Field height in cells
         
         public Config() {}
         
         public Config(int startingLevel, boolean showGhostPiece, boolean showNextPiece, 
                      String gameTheme, boolean soundEnabled, boolean musicEnabled, 
-                     int musicVolume, int effectsVolume, int aiWinScore) {
+                     int musicVolume, int effectsVolume, int aiWinScore, 
+                     int fieldWidth, int fieldHeight) {
             this.startingLevel = startingLevel;
             this.showGhostPiece = showGhostPiece;
             this.showNextPiece = showNextPiece;
@@ -76,6 +79,8 @@ public class GameData {
             this.musicVolume = musicVolume;
             this.effectsVolume = effectsVolume;
             this.aiWinScore = aiWinScore;
+            this.fieldWidth = fieldWidth;
+            this.fieldHeight = fieldHeight;
         }
     }
     
